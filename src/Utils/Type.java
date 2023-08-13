@@ -86,6 +86,7 @@ public class Type {
     }
 
     public boolean equals(Type other) {
+        if(other==null) return true;
         return (Objects.equals(type_name, other.type_name)) && (dimension == other.dimension);
     }
 }

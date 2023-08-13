@@ -360,11 +360,12 @@ public class SemanticChecker implements ASTVisitor {
         if (!it.condition.type.isBool()) {
             throw new SemanticError("If statement condition must be a bool", it.pos);
         }
-        //加一个Scope用来正确地更新returnType
+        //加两个Scope用来正确地更新returnType和解决Scope的问题
         nowScope = new Scope(nowScope);
         it.thenStmt.accept(this);
         Type thenStmtReturnType = nowScope.returnType;
-        nowScope.returnType = null;
+        nowScope=nowScope.parentScope();
+        nowScope=new Scope(nowScope);
         if (it.elseStmt != null) it.elseStmt.accept(this);
         Type elseStmtReturnType = nowScope.returnType;
         if (thenStmtReturnType != null && elseStmtReturnType != null) {
@@ -384,11 +385,20 @@ public class SemanticChecker implements ASTVisitor {
         if (!nowScope.inFuncScope(true)) {
             throw new SemanticError("Return statements can only be in function scope", it.pos);
         }
-
-        if(it.return_expression instanceof NullNode){
-                nowScope.returnType = null;
+        if(it.return_expression==null){
+            nowScope.returnType=null;
+        }else{
+            //特殊处理 return null
+            if(it.return_expression instanceof NullNode){
+                if(nowScope.findReturnType().isVoid()){
+                    throw new SemanticError("Cannot return null in return-type-void function",it.pos);
+                }
+                nowScope.returnType = nowScope.findReturnType();
+            }else{
+                nowScope.returnType = it.return_expression.type;
+            }
         }
-        nowScope.returnType = it.return_expression.type;
+
 
         if ( nowScope.findReturnType() == null || nowScope.findReturnType().isVoid() ) {
             if (nowScope.returnType != null) throw new SemanticError("Return type mismatch", it.pos);

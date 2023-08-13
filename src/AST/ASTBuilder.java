@@ -121,7 +121,6 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
     public ASTNode visitReturnStmt(MxParser.ReturnStmtContext ctx) {
         ExprNode returnExpr = null;
         if (ctx.expression() != null) returnExpr = (ExprNode) visit(ctx.expression());
-        else returnExpr = new NullNode(new position(ctx));
         return new ReturnStmtNode(returnExpr, new position(ctx));
     }
 
