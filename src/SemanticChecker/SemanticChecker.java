@@ -48,25 +48,25 @@ public class SemanticChecker implements ASTVisitor {
         //进入函数作用域
         nowScope = new Scope(nowScope);
         nowScope.isFunc = true;
-        if(it.isConstructor){
+        if (it.isConstructor) {
             //特判构造函数，检查是否在类作用域里，检查名字对不对
-            if(!nowScope.inClassScope(true)){
-                throw new SemanticError("Constructor must be in Class scope",it.pos);
+            if (!nowScope.inClassScope(true)) {
+                throw new SemanticError("Constructor must be in Class scope", it.pos);
             }
-            String className=nowScope.findClassName();
-            if(!className.equals(it.func_name)){
-                throw new SemanticError("Wrong Constructor",it.pos);
+            String className = nowScope.findClassName();
+            if (!className.equals(it.func_name)) {
+                throw new SemanticError("Wrong Constructor", it.pos);
             }
-        }else checkType(it.return_type.type_name);
+        } else checkType(it.return_type.type_name);
         nowScope.correctReturnType = it.return_type; //todo 这是后加的，下面或许可以优化
         //把参数加进作用域里
-        for(int i=0;i<it.parameter_list.size();++i){
-            nowScope.defineVariable(it.getParameterName(i),it.getParameterType(i),it.pos);
+        for (int i = 0; i < it.parameter_list.size(); ++i) {
+            nowScope.defineVariable(it.getParameterName(i), it.getParameterType(i), it.pos);
         }
         for (StmtNode nowNode : it.statements) {
             nowNode.accept(this);
         }
-        if (it.isConstructor|| it.return_type.isVoid() ) {
+        if (it.isConstructor || it.return_type.isVoid()) {
             if (nowScope.returnType != null) throw new SemanticError("Return type mismatch", it.pos);
         } else if (nowScope.returnType == null) {
             if (!it.func_name.equals("main")) throw new SemanticError("Missing return type", it.pos);
@@ -133,12 +133,13 @@ public class SemanticChecker implements ASTVisitor {
         it.rhs.accept(this);
         it.lhs.accept(this);
         //null==null
-        if(it.lhs instanceof NullNode||it.rhs instanceof NullNode){
-            if(!(it.op== BinaryExprNode.binaryOpType.equal||it.op== BinaryExprNode.binaryOpType.notEqual)){
-                throw new SemanticError("Null can only be in equal or unequal",it.pos);
+        if (it.lhs instanceof NullNode || it.rhs instanceof NullNode) {
+            if (!(it.op == BinaryExprNode.binaryOpType.equal || it.op == BinaryExprNode.binaryOpType.notEqual)) {
+                throw new SemanticError("Null can only be in equal or unequal", it.pos);
             }
-            it.type=new Type("bool");
+            it.type = new Type("bool");
             //TODO 可能还需要检查一下另一边是否为基本类型，错了再说
+            //没错
             return;
         }
         //比较时只需相同类型即可
@@ -183,11 +184,11 @@ public class SemanticChecker implements ASTVisitor {
         Type returnType = globalScope.getReturnTypeFromName(it.funcName);
         Function func = globalScope.func.get(it.funcName);
         //可能是在类内调用类方法
-        if(nowScope.inClassScope(true)){
-            Function method=nowScope.findClassMethod(it.funcName);
-            if(method!=null){
-                func=method;
-                returnType=nowScope.findClassMethod(it.funcName).returnType;
+        if (nowScope.inClassScope(true)) {
+            Function method = nowScope.findClassMethod(it.funcName);
+            if (method != null) {
+                func = method;
+                returnType = nowScope.findClassMethod(it.funcName).returnType;
             }
         }
         if (returnType == null) throw new SemanticError("Function not found", it.pos);
@@ -364,8 +365,8 @@ public class SemanticChecker implements ASTVisitor {
         nowScope = new Scope(nowScope);
         it.thenStmt.accept(this);
         Type thenStmtReturnType = nowScope.returnType;
-        nowScope=nowScope.parentScope();
-        nowScope=new Scope(nowScope);
+        nowScope = nowScope.parentScope();
+        nowScope = new Scope(nowScope);
         if (it.elseStmt != null) it.elseStmt.accept(this);
         Type elseStmtReturnType = nowScope.returnType;
         if (thenStmtReturnType != null && elseStmtReturnType != null) {
@@ -381,26 +382,26 @@ public class SemanticChecker implements ASTVisitor {
 
     public void visit(ReturnStmtNode it) {
         //更新本作用域的返回值,检查return的位置是否合理
-        if(it.return_expression!=null) it.return_expression.accept(this);
+        if (it.return_expression != null) it.return_expression.accept(this);
         if (!nowScope.inFuncScope(true)) {
             throw new SemanticError("Return statements can only be in function scope", it.pos);
         }
-        if(it.return_expression==null){
-            nowScope.returnType=null;
-        }else{
+        if (it.return_expression == null) {
+            nowScope.returnType = null;
+        } else {
             //特殊处理 return null
-            if(it.return_expression instanceof NullNode){
-                if(nowScope.findReturnType().isVoid()){
-                    throw new SemanticError("Cannot return null in return-type-void function",it.pos);
+            if (it.return_expression instanceof NullNode) {
+                if (nowScope.findReturnType().isVoid()) {
+                    throw new SemanticError("Cannot return null in return-type-void function", it.pos);
                 }
                 nowScope.returnType = nowScope.findReturnType();
-            }else{
+            } else {
                 nowScope.returnType = it.return_expression.type;
             }
         }
 
 
-        if ( nowScope.findReturnType() == null || nowScope.findReturnType().isVoid() ) {
+        if (nowScope.findReturnType() == null || nowScope.findReturnType().isVoid()) {
             if (nowScope.returnType != null) throw new SemanticError("Return type mismatch", it.pos);
         } else if (!nowScope.returnType.equals(nowScope.findReturnType()))
             throw new SemanticError("Return type mismatch", it.pos);

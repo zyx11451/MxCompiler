@@ -177,15 +177,15 @@ public class SymbolCollector implements ASTVisitor {
         for (DefNode nowNode : it.defs) {
             if (nowNode instanceof ClassDefNode classDefNode) {
                 classDefNode.accept(this);
-                if(globalScope.func.containsKey(nowDefiningClass.type_name)){
-                    throw new SemanticError("Class name conflict with function name",it.pos);
+                if (globalScope.func.containsKey(nowDefiningClass.type_name)) {
+                    throw new SemanticError("Class name conflict with function name", it.pos);
                 }
                 globalScope.addType(nowDefiningClass.type_name, nowDefiningClass);
                 nowDefiningClass = null;
             } else if (nowNode instanceof FuncDefNode funcDefNode) {
                 funcDefNode.accept(this);
-                if(globalScope.types.containsKey(nowDefiningFunc.functionName)){
-                    throw new SemanticError("Function name conflict with class name",it.pos);
+                if (globalScope.types.containsKey(nowDefiningFunc.functionName)) {
+                    throw new SemanticError("Function name conflict with class name", it.pos);
                 }
                 globalScope.addFunc(nowDefiningFunc.functionName, nowDefiningFunc);
                 if (Objects.equals(funcDefNode.func_name, "main")) {
