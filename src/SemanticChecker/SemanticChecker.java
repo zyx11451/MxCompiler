@@ -138,8 +138,8 @@ public class SemanticChecker implements ASTVisitor {
                 throw new SemanticError("Null can only be in equal or unequal", it.pos);
             }
             it.type = new Type("bool");
-            //TODO 可能还需要检查一下另一边是否为基本类型，错了再说
-            //没错
+            //可能还需要检查一下另一边是否为基本类型，错了再说
+            //结果没错
             return;
         }
         //比较时只需相同类型即可

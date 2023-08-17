@@ -151,7 +151,7 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
 
     public ASTNode visitLiteral(MxParser.LiteralContext ctx) {
         if (ctx.DecimalInteger() != null) {
-            return new IntLiteralNode(Integer.parseInt(ctx.DecimalInteger().toString()), new position(ctx));
+            return new IntLiteralNode(Long.parseLong(ctx.DecimalInteger().toString()), new position(ctx));
         } else if (ctx.StringLiteral() != null) {
             String str = ctx.StringLiteral().toString();
             str = str.substring(1, str.length() - 1);

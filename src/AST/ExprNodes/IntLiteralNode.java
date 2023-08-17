@@ -4,8 +4,8 @@ import AST.ASTVisitor;
 import Utils.position;
 
 public class IntLiteralNode extends ExprNode{
-    public int value;
-    public IntLiteralNode(int value, position pos){
+    public long value;//-2147483648
+    public IntLiteralNode(long value, position pos){
         super(pos);
         this.value=value;
     }

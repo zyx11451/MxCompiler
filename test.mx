@@ -1,25 +1,17 @@
 /*
 Test Package: Sema_Local_Preview
-Test Target: Misc
-Author: 16' Jiuqin Zhou
-Time: 2019-11-11
-Verdict: Success
-Origin Package: Semantic Pretest
+Test Target: Classes
+Author: 12' Chao Liao
+Time: 2019-10-20
+Verdict: Fail
+Comment: Class Foo has no member named naive
+Origin Package: Semantic Extended
 */
-int main(){
-    int i = 0;
+class Foo {
+    int young;
+};
 
-    if(i == 0)
-        int i = 0;
-    else if( i == 0)
-            if( i == 0)
-                int i = 0;
-    else
-        int i = 0;
-    {
-        int i = 0;
-    }
-
-
-    return 0;
+int main() {
+    Foo chairman = new Foo;
+    chairman.young = -2147483648;
 }
