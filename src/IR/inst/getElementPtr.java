@@ -20,4 +20,7 @@ public class getElementPtr extends inst{
     public void addIdx(entity e){
         idx.add(e);
     }
+    public String toString(){
+        return null;
+    }
 }

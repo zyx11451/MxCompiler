@@ -27,7 +27,7 @@ public class Function {
         this.functionName = name;
         this.returnType = returnType;
         this.parameters = new ArrayList<>();
-        this.parameterType =new HashMap<>();
+        this.parameterType = new HashMap<>();
     }
 
     public int parameterNum() {
@@ -41,10 +41,18 @@ public class Function {
         parameterType.put(name, type);
     }
 
+    public Type getParameterType(int i) {
+        return parameters.get(i).type;
+    }
+
+    public String getParameterName(int i) {
+        return parameters.get(i).name;
+    }
+
     public boolean parameterTypeCheck(ArrayList<Type> in) {
         if (in.size() != parameterNum()) return false;
         for (int i = 0; i < parameterNum(); ++i) {
-            if (!parameters.get(i).type.equals(in.get(i)) ) return false;
+            if (!parameters.get(i).type.equals(in.get(i))) return false;
         }
         return true;
     }

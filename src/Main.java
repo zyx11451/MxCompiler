@@ -1,6 +1,8 @@
 
 import AST.ASTBuilder;
 import AST.DefNodes.RootNode;
+import IR.IRBuilder;
+import IR.IRDefs.IRRoot;
 import Parser.MxLexer;
 import Parser.MxParser;
 import SemanticChecker.SemanticChecker;
@@ -17,10 +19,10 @@ import java.io.InputStream;
 
 public class Main {
     public static void main(String[] args) throws Exception{
-        InputStream input=System.in;
+        //InputStream input=System.in;
         String name = "test.mx";
         //String name = System.in.toString();
-        //InputStream input = new FileInputStream(name);
+        InputStream input = new FileInputStream(name);
         try {
             GlobalScope gScope = new GlobalScope(null);
             MxLexer lexer = new MxLexer(CharStreams.fromStream(input));
@@ -34,6 +36,9 @@ public class Main {
             RootNode ASTRoot=(RootNode) astBuilder.visit(parseTreeRoot);
             new SymbolCollector(gScope).visit(ASTRoot);
             new SemanticChecker(gScope).visit(ASTRoot);
+           IRRoot irRoot=new IRRoot();
+            new IRBuilder(irRoot,gScope).visit(ASTRoot);
+            System.out.print(irRoot.toString());
         }catch (error er) {
             System.err.println(er.toString());
             throw new RuntimeException();

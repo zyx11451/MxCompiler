@@ -13,4 +13,7 @@ public class variable extends entity {
     public IRType getType(){
         return type;
     }
+    public String toString(){
+        return name;
+    };
 }

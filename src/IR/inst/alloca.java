@@ -10,4 +10,7 @@ public class alloca extends inst {
         this.result=result;
         this.type=type;
     }
+    public String toString(){
+        return result.toString()+" = alloca "+type.toString();
+    }
 }

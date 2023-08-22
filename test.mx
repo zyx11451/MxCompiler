@@ -1,17 +1,9 @@
-/*
-Test Package: Sema_Local_Preview
-Test Target: Classes
-Author: 12' Chao Liao
-Time: 2019-10-20
-Verdict: Fail
-Comment: Class Foo has no member named naive
-Origin Package: Semantic Extended
-*/
-class Foo {
-    int young;
-};
+int foo(int a,int b){
+ return a+b;
+}
 
 int main() {
-    Foo chairman = new Foo;
-    chairman.young = -2147483648;
+int a=0,b=1;
+a=foo(b,b);
+return 0;
 }

@@ -336,13 +336,13 @@ public class SemanticChecker implements ASTVisitor {
         //对相关节点进行检查，检查condition类型
         nowScope = new Scope(nowScope);
         nowScope.isLoop = true;
+        if (it.init != null) it.init.accept(this);//实际上init不可能为null，最多就是Empty而已
         if (it.condition != null) {
             it.condition.accept(this);
             if (!it.condition.type.isBool()) {
                 throw new SemanticError("Loop condition must be a bool", it.pos);
             }
         }
-        if (it.init != null) it.init.accept(this);//实际上init不可能为null，最多就是Empty而已
         if (it.step != null) it.step.accept(this);
 
         it.thenStmt.accept(this);

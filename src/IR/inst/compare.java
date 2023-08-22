@@ -29,5 +29,15 @@ public class compare extends inst {
         this.operand2=operand2;
         this.op=op;
     }
-
+    public String toString(){
+        return lhs.toString() +
+                " = icmp " +
+                op.toString() +
+                " i" +
+                type +
+                " " +
+                operand1.toString() +
+                "," +
+                operand2.toString();
+    }
 }

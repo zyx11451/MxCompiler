@@ -14,4 +14,7 @@ public class load extends inst{
     public IRType getType(){
         return result.type;
     }
+    public String toString(){
+        return result.toString()+" = load "+result.type.toString()+",ptr "+pointer.toString();
+    }
 }

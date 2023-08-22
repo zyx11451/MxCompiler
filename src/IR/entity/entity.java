@@ -4,4 +4,5 @@ import IR.IRTypes.IRType;
 
 abstract public class entity {
     abstract public IRType getType();
+    abstract public String toString();
 }

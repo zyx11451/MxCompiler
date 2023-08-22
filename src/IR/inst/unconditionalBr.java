@@ -6,4 +6,7 @@ public class unconditionalBr extends inst {
         super();
         this.dest=dest;
     }
+    public String toString(){
+        return "br label %"+dest.labelName;
+    }
 }
