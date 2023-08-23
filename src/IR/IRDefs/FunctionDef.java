@@ -31,12 +31,6 @@ public class FunctionDef extends def{
         this.parameters=new ArrayList<>();
         this.functionBody=new ArrayList<>();
     }
-    public FunctionDef(FunctionDec f){
-        this.functionName=f.functionName;
-        this.resultType=f.resultType;
-        this.parameters=f.parameters;
-        this.functionBody=new ArrayList<>();
-    }
     public String toString(){
         StringBuilder ans= new StringBuilder("define "+resultType.toString()+" @"+functionName+"( ");
         for(variable parameter:parameters){

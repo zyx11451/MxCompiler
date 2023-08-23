@@ -1,7 +1,15 @@
 #define bool _Bool
-#include "stdlib.h"
-#include "string.h"
-#include "stdio.h"
+
+int printf(const char *pattern, ...);
+int scanf(const char *restrict, ...);
+int sprintf(char *, const char *, ...);
+int sscanf(const char *restrict, const char *restrict, ...);
+char *strcpy(char *, const char *);
+char *strcat(char *, const char *);
+int strcmp(const char *, const char *);
+unsigned int strlen(const char *);
+void *memcpy(char *,const char*,unsigned int);
+void* malloc(unsigned int);
 
 struct _array{
     int size;
@@ -13,9 +21,9 @@ int _arraySize(struct _array* a){
 char* _arrayElement(struct _array* a,int in){
     return (a->ptr)+in;
 }
-void print(const char *s) {printf("%s", s);}
+void print(char *s) {printf("%s", s);}
 
-void println(const char *s) {printf("%s\n", s);}
+void println(char *s) {printf("%s\n", s);}
 
 void printInt(int n) {printf("%d", n);}
 
@@ -24,7 +32,7 @@ void printlnInt(int n) {printf("%d\n", n);}
 char *_malloc(int n) {return malloc(n);}
 
 
-const char *getString()
+char *getString()
 {
 	char *ans = malloc(1024);
 	scanf("%s", ans);
@@ -46,7 +54,7 @@ char *toString(int i)
 }
 
 
-char *string_plus(char *lhs, char *rhs)
+char *_string_plus(char *lhs, char *rhs)
 {
 	char *ans = malloc(1024);
 	strcpy(ans, lhs);
@@ -54,21 +62,21 @@ char *string_plus(char *lhs, char *rhs)
 	return ans;
 }
 
-bool string_eq(char *lhs, char *rhs) {return strcmp(lhs, rhs) == 0;}
+bool _string_eq(char *lhs, char *rhs) {return strcmp(lhs, rhs) == 0;}
 
-bool string_ne(char *lhs, char *rhs) {return strcmp(lhs, rhs) != 0;}
+bool _string_ne(char *lhs, char *rhs) {return strcmp(lhs, rhs) != 0;}
 
-bool string_l(char *lhs, char *rhs) {return strcmp(lhs, rhs) < 0;}
+bool _string_l(char *lhs, char *rhs) {return strcmp(lhs, rhs) < 0;}
 
-bool string_g(char *lhs, char *rhs) {return strcmp(lhs, rhs) > 0;}
+bool _string_g(char *lhs, char *rhs) {return strcmp(lhs, rhs) > 0;}
 
-bool string_le(char *lhs, char *rhs) {return strcmp(lhs, rhs) <= 0;}
+bool _string_le(char *lhs, char *rhs) {return strcmp(lhs, rhs) <= 0;}
 
-bool string_ge(char *lhs, char *rhs) {return strcmp(lhs, rhs) >= 0;}
+bool _string_ge(char *lhs, char *rhs) {return strcmp(lhs, rhs) >= 0;}
 
-int string_length(char *s) {return strlen(s);}
+int _string_length(char *s) {return strlen(s);}
 
-char *string_substring(char *s, int l, int r)
+char *_string_substring(char *s, int l, int r)
 {
 	char *ans = malloc( r - l + 1);
 	memcpy(ans, s + l, r - l);
@@ -76,11 +84,11 @@ char *string_substring(char *s, int l, int r)
 	return ans;
 }
 
-int string_parseInt(char *s)
+int _string_parseInt(char *s)
 {
 	int ans;
 	sscanf(s, "%d", &ans);
 	return ans;
 }
 
-int string_ord(char *s, int pos) {return s[pos];}
+int _string_ord(char *s, int pos) {return s[pos];}

@@ -21,6 +21,18 @@ public class getElementPtr extends inst{
         idx.add(e);
     }
     public String toString(){
-        return null;
+        StringBuilder ans=new StringBuilder();
+        ans.append(result.toString());
+        ans.append(" = getelementptr ");
+        ans.append(type.toString());
+        ans.append(",ptr ");
+        ans.append(ptrVal.toString());
+        for (entity i:idx){
+            ans.append(",");
+            ans.append(i.getType().toString());
+            ans.append(" ");
+            ans.append(i.toString());
+        }
+        return ans.toString();
     }
 }

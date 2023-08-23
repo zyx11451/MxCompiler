@@ -5,7 +5,7 @@ import Utils.Type;
 import Utils.position;
 
 public class StringLiteralNode extends ExprNode{
-    String value;
+    public String value;
     public StringLiteralNode(String value, position pos){
         super(pos);
         this.value=value;

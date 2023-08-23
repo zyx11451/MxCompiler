@@ -30,7 +30,7 @@ public class call extends inst{
             ans.append(parameter.toString());
             ans.append(",");
         }
-        ans.deleteCharAt(ans.length()-1);
+        if(!parameters.isEmpty()) ans.deleteCharAt(ans.length()-1);
         ans.append(")");
         return ans.toString();
     }
