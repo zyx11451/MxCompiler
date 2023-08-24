@@ -9,7 +9,7 @@ import java.util.HashMap;
 public class phi extends inst {
     public variable result;
     public IRType type;
-    public HashMap<String, entity> valLabel;//顺序不重要
+    public HashMap<block, entity> valLabel;//顺序不重要
 
     public phi(variable result, IRType type) {
         this.result = result;
@@ -22,7 +22,7 @@ public class phi extends inst {
         ans.append(result.toString());
         ans.append(" = phi ");
         ans.append(type.toString());
-        valLabel.forEach((s, e) -> ans.append("[ ").append(e.toString()).append(",%").append(s).append("],"));
+        valLabel.forEach((s, e) -> ans.append("[ ").append(e.toString()).append(",%").append(s.labelName).append("],"));
         ans.deleteCharAt(ans.length()-1);
         return ans.toString();
     }

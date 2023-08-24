@@ -19,7 +19,7 @@ int _arraySize(struct _array* a){
     return a->size;
 }
 char* _arrayElement(struct _array* a,int in){
-    return (a->ptr)+in;
+    return &((a->ptr)[in]);
 }
 void print(char *s) {printf("%s", s);}
 
