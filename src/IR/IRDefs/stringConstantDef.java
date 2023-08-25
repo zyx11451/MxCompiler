@@ -12,7 +12,24 @@ public class stringConstantDef extends def {
         this.size=size;
         this.name=v.name;
     }
+    String TransEscapeValue(){
+        StringBuilder ans=new StringBuilder();
+        for(int i=0;i<value.length();++i){
+            if(value.charAt(i)=='\\'){
+                ++i;
+                if(value.charAt(i)=='n'){
+                    ans.append("\0A");
+                }else if(value.charAt(i)=='\\'){
+                    ans.append("\\\\");
+                }else if(value.charAt(i)=='\"'){
+                    ans.append("\22");
+                }
+            }
+            else ans.append(value.charAt(i));
+        }
+        return ans.toString();
+    }
     public String toString(){
-        return name+" = private unnamed_addr constant ["+size+" x i8] c\""+value+"\"";
+        return name+" = private unnamed_addr constant ["+size+" x i8] c\""+TransEscapeValue()+"\"";
     }
 }

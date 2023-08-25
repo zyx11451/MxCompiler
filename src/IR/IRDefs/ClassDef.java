@@ -43,10 +43,11 @@ public class ClassDef extends def {
         });
     }
     public String toString(){
-        StringBuilder ans= new StringBuilder("%"+name + " = type { ");
+        StringBuilder ans= new StringBuilder("%class."+name + " = type { ");
         for(IRType element:elements){
-            ans.append(element.toString()).append(" ");
+            ans.append(element.toString()).append(" ,");
         }
+        ans.deleteCharAt(ans.length()-1);
         ans.append("}");
         return ans.toString();
     }
