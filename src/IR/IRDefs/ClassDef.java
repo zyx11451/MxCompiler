@@ -10,6 +10,7 @@ public class ClassDef extends def {
     public String name;
     public ArrayList<IRType> elements;
     public HashMap<String, Integer> index;//方便找到成员是第几个
+    public boolean constructFunctionDefined=false;
 
     int elementNum;
 

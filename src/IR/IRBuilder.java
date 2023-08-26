@@ -13,6 +13,7 @@ import Utils.Type;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class IRBuilder implements ASTVisitor {
     public IRRoot root;
@@ -34,6 +35,7 @@ public class IRBuilder implements ASTVisitor {
     String ArraySize = "_arraySize";//数组长度，同上,内建方法，靠c写，在节点中仅调用函数
     String ArrayElement = "_arrayElement";//取数组第n个i8处的指针
     FunctionDef initGlobal = new FunctionDef("_initGlobal", new Type("void"));
+    HashSet<String> nowClassMethodNames=null;
 
     public IRBuilder(IRRoot root, GlobalScope globalScope) {
         this.root = root;
@@ -100,8 +102,15 @@ public class IRBuilder implements ASTVisitor {
     public void visit(ClassDefNode it) {
         //类本身已先手添加
         nowScope = new IRScope(nowScope);
+        nowClassMethodNames=new HashSet<>();
         nowScope.isClassScope = true;
         nowDefiningClass = types.get(it.classname);
+        nowDefiningClass.index.forEach((s,i)->nowScope.var.put(s,new variable(new IRSimpleType(32),"should_not_in_IR_"+s)));
+        it.elements.forEach(defNode -> {
+            if (defNode instanceof FuncDefNode) {
+                nowClassMethodNames.add(((FuncDefNode) defNode).func_name);
+            }
+        });
         it.elements.forEach(defNode -> {
             if (defNode instanceof FuncDefNode) {
                 defNode.accept(this);
@@ -110,8 +119,13 @@ public class IRBuilder implements ASTVisitor {
                 root.definitions.add(nowDefining);
             }
         });
+        if (!nowDefiningClass.constructFunctionDefined){
+            FunctionDef constructor=new FunctionDef(it.classname+"."+it.classname, new Type("void"));
+            constructor.functionBody.add(new ret(new voidEntity()));
+            root.definitions.add(constructor);
+        }
         nowScope = nowScope.parent;
-
+        nowClassMethodNames=null;
     }
 
     public void visit(FuncDefNode it) {
@@ -123,7 +137,14 @@ public class IRBuilder implements ASTVisitor {
             nowDefining.functionBody.add(new call("_initGlobal", new IRVoidType()));
             nowDefining.functionBody.add(new unconditionalBr(nowBuildingBlock));
         } else {
-            nowDefining = new FunctionDef(it.func_name, it.return_type);
+            if(it.return_type!=null){
+                nowDefining = new FunctionDef(it.func_name, it.return_type);
+            }else{
+                nowDefiningClass.constructFunctionDefined=true;
+                nowDefining = new FunctionDef(it.func_name,new Type("void"));
+                it.return_type=new Type("void");//构造AST的时候sb了
+            }
+
             for (int i = 0; i < it.parameter_list.size(); ++i) {
                 IRType t = TransTypeToIRType(it.getParameterType(i));
                 variable v = getNewVariable(t);
@@ -321,7 +342,7 @@ public class IRBuilder implements ASTVisitor {
             it.lhs.accept(this);
             entity lhs = it.lhs.ent;
             if (it.lhs.isAssignable()) {
-                variable v = getNewVariable(new IRSimpleType(32));
+                variable v = getNewVariable(new IRSimpleType(1));
                 nowBuildingBlock.addStatements(new load(v, (variable) lhs));
                 lhs = v;
             }
@@ -331,7 +352,7 @@ public class IRBuilder implements ASTVisitor {
             it.rhs.accept(this);
             entity rhs = it.rhs.ent;
             if (it.rhs.isAssignable()) {
-                variable v = getNewVariable(new IRSimpleType(32));
+                variable v = getNewVariable(new IRSimpleType(1));
                 nowBuildingBlock.addStatements(new load(v, (variable) rhs));
                 rhs = v;
             }
@@ -416,8 +437,32 @@ public class IRBuilder implements ASTVisitor {
                 stringCmp.result = ans;
                 stringCmp.parameters.add(lhs);
                 stringCmp.parameters.add(rhs);
+                nowBuildingBlock.addStatements(stringCmp);
                 it.ent = ans;
             }
+        }else{
+            //类==null
+            variable ans = getNewVariable(new IRSimpleType(1));
+            it.lhs.accept(this);
+            it.rhs.accept(this);
+            entity lhs=it.lhs.ent;
+            entity rhs=it.rhs.ent;
+            if(it.lhs.isAssignable()){
+                variable v=getNewVariable(((IRPointerType) lhs.getType()).targetType);
+                nowBuildingBlock.addStatements(new load(v,(variable) lhs));
+                lhs=v;
+            }
+            if(it.rhs.isAssignable()){
+                variable v=getNewVariable(((IRPointerType) rhs.getType()).targetType);
+                nowBuildingBlock.addStatements(new load(v,(variable) rhs));
+                rhs=v;
+            }
+            if(it.op== BinaryExprNode.binaryOpType.equal){
+                nowBuildingBlock.addStatements(new compare(ans,lhs.getType(),lhs,rhs, compare.condType.eq));
+            }else{
+                nowBuildingBlock.addStatements(new compare(ans,lhs.getType(),lhs,rhs, compare.condType.ne));
+            }
+            it.ent=ans;
         }
 
 
@@ -428,6 +473,30 @@ public class IRBuilder implements ASTVisitor {
     }
 
     public void visit(FunctionCallExprNode it) {
+        //类内调用类成员函数
+        if(nowClassMethodNames!=null){
+            if(nowClassMethodNames.contains(it.funcName)){
+                it.parameters.forEach(p->p.accept(this));
+                call callFunc = new call(nowDefiningClass.name+"."+it.funcName, TransTypeToIRType(it.type));
+                callFunc.parameters.add(new variable(new IRPointerType(new IRBasicClassType(nowDefiningClass.name)), "%_this"));
+                it.parameters.forEach(p -> {
+                    entity pV = p.ent;
+                    if (p.isAssignable()) {
+                        variable v = getNewVariable(((IRPointerType) p.ent.getType()).targetType);
+                        nowBuildingBlock.addStatements(new load(v, (variable) pV));
+                        pV = v;
+                    }
+                    callFunc.parameters.add(pV);
+                });
+                if (!(callFunc.returnType instanceof IRVoidType)) {
+                    variable rt = getNewVariable(callFunc.returnType);
+                    callFunc.result = rt;
+                    it.ent = rt;
+                }
+                nowBuildingBlock.addStatements(callFunc);
+                return;
+            }
+        }
         it.parameters.forEach(p -> p.accept(this));
         call callFunc = new call(it.funcName, TransTypeToIRType(it.type));
         it.parameters.forEach(p -> {
@@ -483,7 +552,7 @@ public class IRBuilder implements ASTVisitor {
         variable arrayHead = getNewVariable(new IRPointerType(elementType));//数组这段空间的一开头
         call mallocFunc = new call("_malloc", arrayHead.getType());
         mallocFunc.result = arrayHead;
-        mallocFunc.parameters.add(bytes);//todo 改malloc
+        mallocFunc.parameters.add(bytes);
         nowBuildingBlock.addStatements(mallocFunc);
         variable arraySizePtr = getNewVariable(new IRPointerType(new IRSimpleType(32)));
         getElementPtr getArraySizePtr = new getElementPtr(new IRSimpleType(32), arrayHead, arraySizePtr);
@@ -560,7 +629,10 @@ public class IRBuilder implements ASTVisitor {
 
     public void visit(NewExprNode it) {
         variable v = getNewVariable(new IRPointerType(new IRBasicClassType(it.type.type_name)));
-        nowBuildingBlock.addStatements(new alloca(v, new IRBasicClassType(it.type.type_name)));
+        call mallocFunc=new call("_malloc",new IRPointerType(null));
+        mallocFunc.result=v;
+        mallocFunc.parameters.add(new constantValue(types.get(it.type.type_name).elements.size()* 4L,new IRSimpleType(32)));
+        nowBuildingBlock.addStatements(mallocFunc);
         call construct = new call(it.type.type_name + "." + it.type.type_name, new IRVoidType());
         construct.parameters.add(v);
         nowBuildingBlock.addStatements(construct);//添加构造函数
@@ -627,8 +699,9 @@ public class IRBuilder implements ASTVisitor {
             nowBuildingBlock.addStatements(new load(v, (variable) t));
             t = v;
         }
-        trueBlk.addStatements(new unconditionalBr(endBlk));
+        nowBuildingBlock.addStatements(new unconditionalBr(endBlk));
         nowDefining.functionBody.add(trueBlk);
+        block trueBlkEndBlk=nowBuildingBlock;
         nowBuildingBlock = falseBlk;
         it.falseExpr.accept(this);
         entity f = it.falseExpr.ent;
@@ -637,13 +710,15 @@ public class IRBuilder implements ASTVisitor {
             nowBuildingBlock.addStatements(new load(v, (variable) f));
             f = v;
         }
-        falseBlk.addStatements(new unconditionalBr(endBlk));
+        nowBuildingBlock.addStatements(new unconditionalBr(endBlk));
         nowDefining.functionBody.add(falseBlk);
+        block falseBlkEndBlk=nowBuildingBlock;
         nowBuildingBlock = endBlk;
+        nowDefining.functionBody.add(endBlk);
         variable ans = getNewVariable(t.getType());
         phi phiInst = new phi(ans, ans.getType());
-        phiInst.valLabel.put(trueBlk, t);
-        phiInst.valLabel.put(falseBlk, f);
+        phiInst.valLabel.put(trueBlkEndBlk, t);
+        phiInst.valLabel.put(falseBlkEndBlk, f);
         endBlk.addStatements(phiInst);
         it.ent = ans;
     }
@@ -751,7 +826,7 @@ public class IRBuilder implements ASTVisitor {
         it.condition.accept(this);
         entity condition = it.condition.ent;
         if (it.condition.isAssignable()) {
-            variable v = getNewVariable(new IRSimpleType(32));
+            variable v = getNewVariable(new IRSimpleType(1));
             nowBuildingBlock.addStatements(new load(v, (variable) condition));
             condition = v;
         }
@@ -835,7 +910,7 @@ public class IRBuilder implements ASTVisitor {
     }
 
     public void visit(RootNode it) {
-        root.definitions.add(initGlobal);
+
         it.defs.forEach(t -> {
             if (t instanceof ClassDefNode) {
                 ClassDef c = new ClassDef(((ClassDefNode) t).classname, MxGlobalScope.types.get(((ClassDefNode) t).classname));
@@ -843,6 +918,7 @@ public class IRBuilder implements ASTVisitor {
                 root.definitions.add(c);
             }
         });
+        root.definitions.add(initGlobal);
         it.defs.forEach(t -> {
             t.accept(this);
             if (t instanceof FuncDefNode) root.definitions.add(nowDefining);

@@ -18,7 +18,7 @@ public class IRBasicClassType extends IRType {
     }
 
     public int size() {
-        return 0;//应该不需要
+        return 0;
     }
 
     public String toString() {
