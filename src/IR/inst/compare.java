@@ -2,6 +2,7 @@ package IR.inst;
 
 import IR.IRTypes.IRSimpleType;
 import IR.IRTypes.IRType;
+import IR.IRVisitor;
 import IR.entity.entity;
 import IR.entity.variable;
 
@@ -49,5 +50,8 @@ public class compare extends inst {
                 operand1.toString() +
                 "," +
                 operand2.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

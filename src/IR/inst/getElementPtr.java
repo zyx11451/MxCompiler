@@ -1,6 +1,8 @@
 package IR.inst;
 
+import AST.ASTVisitor;
 import IR.IRTypes.IRType;
+import IR.IRVisitor;
 import IR.entity.entity;
 import IR.entity.variable;
 
@@ -34,5 +36,8 @@ public class getElementPtr extends inst{
             ans.append(i.toString());
         }
         return ans.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

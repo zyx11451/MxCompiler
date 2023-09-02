@@ -1,6 +1,7 @@
 package IR.inst;
 
 import IR.IRTypes.IRType;
+import IR.IRVisitor;
 import IR.entity.variable;
 
 public class alloca extends inst {
@@ -12,5 +13,8 @@ public class alloca extends inst {
     }
     public String toString(){
         return result.toString()+" = alloca "+type.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

@@ -1,6 +1,7 @@
 package IR.IRDefs;
 
 import IR.IRTypes.*;
+import IR.IRVisitor;
 import Utils.Type;
 
 import java.util.ArrayList;
@@ -51,5 +52,8 @@ public class ClassDef extends def {
         ans.deleteCharAt(ans.length()-1);
         ans.append("}");
         return ans.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

@@ -1,5 +1,7 @@
 package IR.inst;
 
+import IR.IRVisitor;
+
 import java.util.ArrayList;
 
 public class block extends inst {
@@ -25,5 +27,8 @@ public class block extends inst {
             }
         }
         return ans.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

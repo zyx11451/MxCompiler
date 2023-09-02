@@ -1,5 +1,7 @@
 package IR.IRDefs;
 
+import IR.IRVisitor;
+
 import java.util.ArrayList;
 
 public class IRRoot {
@@ -43,5 +45,8 @@ public class IRRoot {
             ans.append("\n");
         }
         return ans.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

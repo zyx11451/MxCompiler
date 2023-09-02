@@ -1,6 +1,7 @@
 package IR.inst;
 
 import IR.IRTypes.IRPointerType;
+import IR.IRVisitor;
 import IR.entity.entity;
 import IR.entity.variable;
 
@@ -15,5 +16,8 @@ public class store extends inst{
     }
     public String toString(){
         return "store "+pointer.targetType.toString()+" "+value.toString()+",ptr "+target.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

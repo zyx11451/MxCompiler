@@ -2,6 +2,7 @@ package IR.IRDefs;
 
 
 import IR.IRTypes.*;
+import IR.IRVisitor;
 import IR.entity.variable;
 import IR.inst.inst;
 import Utils.Type;
@@ -47,5 +48,8 @@ public class FunctionDef extends def{
         }
         ans.append("}");
         return ans.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

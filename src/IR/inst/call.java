@@ -2,6 +2,7 @@ package IR.inst;
 
 import IR.IRTypes.IRType;
 import IR.IRTypes.IRVoidType;
+import IR.IRVisitor;
 import IR.entity.entity;
 import IR.entity.variable;
 
@@ -33,5 +34,8 @@ public class call extends inst{
         if(!parameters.isEmpty()) ans.deleteCharAt(ans.length()-1);
         ans.append(")");
         return ans.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

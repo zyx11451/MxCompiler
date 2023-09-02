@@ -1,5 +1,6 @@
 package IR.IRDefs;
 
+import IR.IRVisitor;
 import IR.entity.variable;
 import IR.inst.inst;
 
@@ -36,5 +37,8 @@ public class stringConstantDef extends def {
             }
         }
         return name+" = private unnamed_addr constant ["+IROutSize+" x i8] c\""+ans.toString()+"\"";
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

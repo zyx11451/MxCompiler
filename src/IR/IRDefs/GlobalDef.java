@@ -2,6 +2,7 @@ package IR.IRDefs;
 
 import IR.IRTypes.IRSimpleType;
 import IR.IRTypes.IRType;
+import IR.IRVisitor;
 import IR.entity.entity;
 import IR.entity.variable;
 
@@ -20,5 +21,8 @@ public class GlobalDef extends def{
             return name+" = global ptr null";
         }
 
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

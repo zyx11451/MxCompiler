@@ -1,5 +1,6 @@
 package IR.inst;
 
+import IR.IRVisitor;
 import IR.entity.entity;
 import IR.entity.voidEntity;
 
@@ -14,5 +15,8 @@ public class ret extends inst {
         }else{
             return "ret "+returnValue.getType().toString()+" "+returnValue.toString();
         }
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

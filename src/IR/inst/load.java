@@ -1,6 +1,7 @@
 package IR.inst;
 
 import IR.IRTypes.IRType;
+import IR.IRVisitor;
 import IR.entity.variable;
 
 public class load extends inst{
@@ -16,5 +17,8 @@ public class load extends inst{
     }
     public String toString(){
         return result.toString()+" = load "+result.type.toString()+",ptr "+pointer.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

@@ -1,6 +1,7 @@
 package IR.inst;
 
 import IR.IRTypes.IRType;
+import IR.IRVisitor;
 import IR.entity.entity;
 import IR.entity.variable;
 
@@ -25,5 +26,8 @@ public class phi extends inst {
         valLabel.forEach((s, e) -> ans.append("[ ").append(e.toString()).append(",%").append(s.labelName).append("],"));
         ans.deleteCharAt(ans.length()-1);
         return ans.toString();
+    }
+    public void accept(IRVisitor visitor){
+        visitor.visit(this);
     }
 }

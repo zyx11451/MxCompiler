@@ -1,4 +1,8 @@
 
+import ASM.ASMModule;
+import ASM.InstSelector;
+import ASM.RegAllocator;
+import ASM.InsertSpOffsetInst;
 import AST.ASTBuilder;
 import AST.DefNodes.RootNode;
 import IR.IRBuilder;
@@ -14,15 +18,17 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import java.io.FileInputStream;
-import java.io.InputStream;
+import java.io.*;
 
 public class Main {
     public static void main(String[] args) throws Exception{
-        InputStream input=System.in;
+        boolean online=true;
+        InputStream input;
         String name = "test.mx";
-        //String name = System.in.toString();
-        //InputStream input = new FileInputStream(name);
+        if(online) input=System.in;
+        else{
+            input = new FileInputStream(name);
+        }
         try {
             GlobalScope gScope = new GlobalScope(null);
             MxLexer lexer = new MxLexer(CharStreams.fromStream(input));
@@ -38,7 +44,20 @@ public class Main {
             new SemanticChecker(gScope).visit(ASTRoot);
             IRRoot irRoot=new IRRoot();
             new IRBuilder(irRoot,gScope).visit(ASTRoot);
-            System.out.print(irRoot.toString());
+            ASMModule asmModule=new ASMModule();
+            new InstSelector(asmModule).visit(irRoot);
+            if(online) new RegAllocator().visit(asmModule);
+            //new RegAllocator().visit(asmModule);
+            new InsertSpOffsetInst().visit(asmModule);
+            if(online) {
+                System.out.print(asmModule.toString());
+                //System.out.print(irRoot.toString());
+            }
+            else{
+                new PrintStream(new FileOutputStream("test.ll")).print(irRoot.toString());
+                new PrintStream(new FileOutputStream("test.s")).print(asmModule.toString());
+            }
+
         }catch (error er) {
             System.err.println(er.toString());
             throw new RuntimeException();
@@ -46,4 +65,3 @@ public class Main {
 
     }
 }
-//todo  目前的问题：构造函数的特判。
