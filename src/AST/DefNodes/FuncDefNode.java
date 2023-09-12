@@ -22,22 +22,22 @@ class ParameterListElement {
 
 public class FuncDefNode extends DefNode {
     public boolean isConstructor = false;
-    public Type return_type;//构造函数的returnType为null,不能有返回值
-    public String func_name;
-    public ArrayList<ParameterListElement> parameter_list;
+    public Type returnType;//构造函数的returnType为null,不能有返回值
+    public String funcName;
+    public ArrayList<ParameterListElement> parameterList;
 
     public ArrayList<StmtNode> statements;
 
-    public FuncDefNode(Type return_type, String name, position pos) {
+    public FuncDefNode(Type returnType, String name, position pos) {
         super(pos);
-        this.return_type = return_type;
-        this.func_name = name;
-        this.parameter_list = new ArrayList<>();
+        this.returnType = returnType;
+        this.funcName = name;
+        this.parameterList = new ArrayList<>();
         this.statements = new ArrayList<>();
     }
 
     public void addParameter(Type type, String name, ExprNode init) {
-        this.parameter_list.add(new ParameterListElement(type, name, init));
+        this.parameterList.add(new ParameterListElement(type, name, init));
     }
 
     public void accept(ASTVisitor visitor) {
@@ -45,10 +45,10 @@ public class FuncDefNode extends DefNode {
     }
 
     public String getParameterName(int i) {
-        return parameter_list.get(i).name;
+        return parameterList.get(i).name;
     }
 
     public Type getParameterType(int i) {
-        return parameter_list.get(i).type;
+        return parameterList.get(i).type;
     }
 }

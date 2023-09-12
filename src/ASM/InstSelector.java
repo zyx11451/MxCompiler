@@ -19,8 +19,8 @@ public class InstSelector implements IRVisitor {
     public ASMModule asmModule;
     public ASMFunction nowDefiningFunc = null;
     public ASMBlock nowBuildingBlock = null;
-    public HashMap<block, ASMBlock> blockMap = new HashMap<>();
-    public HashMap<entity, Register> entMap = new HashMap<>();
+    public HashMap<IRBlock, ASMBlock> blockMap = new HashMap<>();
+    public HashMap<IREntity, Register> entMap = new HashMap<>();
     public int virRegNum = 0;
     public int phiBlkNum = 0;
 
@@ -33,14 +33,14 @@ public class InstSelector implements IRVisitor {
         return new ASMBlock("phi" + phiBlkNum);
     }
 
-    public Register getReg(entity e) {
-        if (e instanceof constantValue) {
+    public Register getReg(IREntity e) {
+        if (e instanceof IRConstantValue) {
             VirReg r = getNewVirReg();
-            nowBuildingBlock.push_back(new ASMLi(r, new Imm(((constantValue) e).value)));
+            nowBuildingBlock.push_back(new ASMLi(r, new Imm(((IRConstantValue) e).value)));
             return r;
-        } else if (e instanceof constantBool) {
+        } else if (e instanceof IRConstantBool) {
             VirReg r = getNewVirReg();
-            if (((constantBool) e).value) {
+            if (((IRConstantBool) e).value) {
                 nowBuildingBlock.push_back(new ASMLi(r, new Imm(1)));
             } else {
                 nowBuildingBlock.push_back(new ASMLi(r, new Imm(0)));
@@ -50,10 +50,10 @@ public class InstSelector implements IRVisitor {
             VirReg r = getNewVirReg();
             nowBuildingBlock.push_back(new ASMLi(r, new Imm(0)));
             return r;
-        } else if (((variable) e).name.charAt(0) == '@') {
+        } else if (((IRVariable) e).isGlobal()) {
             //全局变量
             VirReg r = getNewVirReg();
-            nowBuildingBlock.push_back(new ASMLa(r, ((variable) e).name));
+            nowBuildingBlock.push_back(new ASMLa(r, ((IRVariable) e).name));
             return r;
         } else {
             if (entMap.containsKey(e)) {
@@ -74,10 +74,10 @@ public class InstSelector implements IRVisitor {
         it.definitions.forEach(def -> def.accept(this));
     }
 
-    public void visit(ClassDef it) {
+    public void visit(IRClassDef it) {
     }
 
-    public void visit(FunctionDef it) {
+    public void visit(IRFunctionDef it) {
         nowDefiningFunc = new ASMFunction(it.functionName);
         blockMap = new HashMap<>();
         if (Objects.equals(it.functionName, "main")) {
@@ -86,15 +86,15 @@ public class InstSelector implements IRVisitor {
             nowDefiningFunc.blocks.add(mainInit);
             nowBuildingBlock = null;
         }
-        for (inst functionBlock : it.functionBody) {
-            if (!(functionBlock instanceof block)) {
+        for (IRInst functionBlock : it.functionBody) {
+            if (!(functionBlock instanceof IRBlock)) {
                 continue;
             }
-            ASMBlock asmBlock = new ASMBlock(((block) functionBlock).labelName);
-            blockMap.put((block) functionBlock, asmBlock);
+            ASMBlock asmBlock = new ASMBlock(((IRBlock) functionBlock).labelName);
+            blockMap.put((IRBlock) functionBlock, asmBlock);
             nowDefiningFunc.blocks.add(asmBlock);
         }
-        if(nowDefiningFunc.blocks.isEmpty()){
+        if (nowDefiningFunc.blocks.isEmpty()) {
             nowDefiningFunc.blocks.add(new ASMBlock(nowDefiningFunc.name));
         }
         nowBuildingBlock = nowDefiningFunc.blocks.get(0);//无法处理什么都没有的情况
@@ -124,18 +124,18 @@ public class InstSelector implements IRVisitor {
             }
         }
         //收集alloca
-        for (inst functionBlock:it.functionBody){
-            if (!(functionBlock instanceof block)) {
+        for (IRInst functionBlock : it.functionBody) {
+            if (!(functionBlock instanceof IRBlock)) {
                 continue;
             }
-            for(inst statement:((block) functionBlock).statements){
-                if(statement instanceof alloca){
+            for (IRInst statement : ((IRBlock) functionBlock).statements) {
+                if (statement instanceof IRAlloca) {
                     statement.accept(this);
                 }
             }
         }
-        for (inst functionBlock : it.functionBody) {
-            if (!(functionBlock instanceof block)) {
+        for (IRInst functionBlock : it.functionBody) {
+            if (!(functionBlock instanceof IRBlock)) {
                 continue;
             }
             functionBlock.accept(this);
@@ -165,66 +165,63 @@ public class InstSelector implements IRVisitor {
             });
         }
         nowDefiningFunc.blocks.addAll(phiBlocks);
-        if(Objects.equals(it.functionName, "_initGlobal")||nowDefiningFunc.blocks.get(0).head==null){
-            nowDefiningFunc.blocks.get(nowDefiningFunc.blocks.size()-1).push_back(new ASMRet());
+        if (Objects.equals(it.functionName, "_initGlobal") || nowDefiningFunc.blocks.get(0).head == null) {
+            nowDefiningFunc.blocks.get(nowDefiningFunc.blocks.size() - 1).push_back(new ASMRet());
         }
-        nowDefiningFunc.blocks.get(0).labelName=nowDefiningFunc.name;
+        nowDefiningFunc.blocks.get(0).labelName = nowDefiningFunc.name;
         asmModule.function.add(nowDefiningFunc);
     }
 
-    public void visit(FunctionDec it) {
-    }
-
-    public void visit(GlobalDef it) {
+    public void visit(IRGlobalDef it) {
         asmModule.data.add(new ASMData(it.name, 0));//所有东西都被初始化为0
     }
 
-    public void visit(stringConstantDef it) {
+    public void visit(IRStringConstantDef it) {
         asmModule.data.add(new ASMData(it.name, it.value));
     }
 
-    public void visit(alloca it) {
+    public void visit(IRAlloca it) {
         //如果alloca在load、store后面就会出事，在函数开始前收集一下
         VirReg rd = getNewVirReg();
         entMap.put(it.result, rd);
         nowDefiningFunc.allocate(rd);
     }
 
-    public void visit(binary it) {
-        Register rd =  getReg(it.lhs);
+    public void visit(IRBinary it) {
+        Register rd = getReg(it.lhs);
         Register rs1 = getReg(it.operand1);
         Register rs2 = getReg(it.operand2);
-        if (it.op == binary.opType.add) {
+        if (it.op == IRBinary.opType.add) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.add, rd, rs1, rs2));
-        } else if (it.op == binary.opType.sub) {
+        } else if (it.op == IRBinary.opType.sub) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.sub, rd, rs1, rs2));
-        } else if (it.op == binary.opType.mul) {
+        } else if (it.op == IRBinary.opType.mul) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.mul, rd, rs1, rs2));
-        } else if (it.op == binary.opType.sdiv) {
+        } else if (it.op == IRBinary.opType.sdiv) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.div, rd, rs1, rs2));
-        } else if (it.op == binary.opType.srem) {
+        } else if (it.op == IRBinary.opType.srem) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.rem, rd, rs1, rs2));
-        } else if (it.op == binary.opType.and) {
+        } else if (it.op == IRBinary.opType.and) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.and, rd, rs1, rs2));
-        } else if (it.op == binary.opType.or) {
+        } else if (it.op == IRBinary.opType.or) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.or, rd, rs1, rs2));
-        } else if (it.op == binary.opType.xor) {
+        } else if (it.op == IRBinary.opType.xor) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.xor, rd, rs1, rs2));
-        } else if (it.op == binary.opType.shl) {
+        } else if (it.op == IRBinary.opType.shl) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.sll, rd, rs1, rs2));
-        } else if (it.op == binary.opType.ashr) {
+        } else if (it.op == IRBinary.opType.ashr) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.sra, rd, rs1, rs2));
         }
     }
 
-    public void visit(block it) {
+    public void visit(IRBlock it) {
         nowBuildingBlock = blockMap.get(it);
-        it.statements.forEach(s ->{
-           if(!(s instanceof alloca)) s.accept(this);
-        } );
+        it.statements.forEach(s -> {
+            if (!(s instanceof IRAlloca)) s.accept(this);
+        });
     }
 
-    public void visit(call it) {
+    public void visit(IRCall it) {
         if (it.parameters.size() <= 8) {
             for (int i = 0; i < it.parameters.size(); ++i) {
                 nowBuildingBlock.push_back(new ASMMv(new PhyReg("a" + i), getReg(it.parameters.get(i))));
@@ -238,7 +235,7 @@ public class InstSelector implements IRVisitor {
                 nowBuildingBlock.push_back(new ASMStore(getReg(it.parameters.get(i)), new PhyReg("sp"), parameterOffset));
                 parameterOffset += 4;
             }
-            nowDefiningFunc.paraOffset=Integer.max(parameterOffset,nowDefiningFunc.paraOffset);
+            nowDefiningFunc.paraOffset = Integer.max(parameterOffset, nowDefiningFunc.paraOffset);
 
         }
         nowBuildingBlock.push_back(new ASMCall(it.functionName));
@@ -250,37 +247,37 @@ public class InstSelector implements IRVisitor {
 
     }
 
-    public void visit(compare it) {
+    public void visit(IRCompare it) {
         Register rd = getReg(it.lhs);
         Register rs1 = getReg(it.operand1);
         Register rs2 = getReg(it.operand2);
-        if (it.op == compare.condType.eq) {
+        if (it.op == IRCompare.condType.eq) {
             VirReg tmp = getNewVirReg();
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.xor, tmp, rs1, rs2));
             nowBuildingBlock.push_back(new ASMSet(ASMSet.opType.seqz, rd, tmp));
-        } else if (it.op == compare.condType.ne) {
+        } else if (it.op == IRCompare.condType.ne) {
             VirReg tmp = getNewVirReg();
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.xor, tmp, rs1, rs2));
             nowBuildingBlock.push_back(new ASMSet(ASMSet.opType.snez, rd, tmp));
-        } else if (it.op == compare.condType.slt) {
+        } else if (it.op == IRCompare.condType.slt) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.slt, rd, rs1, rs2));
-        } else if (it.op == compare.condType.sgt) {
+        } else if (it.op == IRCompare.condType.sgt) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.slt, rd, rs2, rs1));
-        } else if (it.op == compare.condType.sge) {
+        } else if (it.op == IRCompare.condType.sge) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.slt, rd, rs1, rs2));
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.xori, rd, rd, new Imm(1)));
-        } else if (it.op == compare.condType.sle) {
+        } else if (it.op == IRCompare.condType.sle) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.slt, rd, rs2, rs1));
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.xori, rd, rd, new Imm(1)));
         }
     }
 
-    public void visit(conditionalBr it) {
+    public void visit(IRConditionalBr it) {
         nowBuildingBlock.push_back(new ASMBranch(ASMBranch.opType.beqz, getReg(it.cond), blockMap.get(it.ifFalse).labelName));
         nowBuildingBlock.push_back(new ASMJump(blockMap.get(it.ifTrue).labelName));
     }
 
-    public void visit(getElementPtr it) {
+    public void visit(IRGetElementPtr it) {
         //取数组元素时后面跟着一个，取类成员时后面跟着两个且第一个必为0
         Register rd = getReg(it.result);
         Register i;
@@ -290,14 +287,14 @@ public class InstSelector implements IRVisitor {
             i = getReg(it.idx.get(1));
         }
         VirReg tmp = getNewVirReg();
-        nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.mul, tmp, i, getReg(new constantValue(4,new IRSimpleType(32)))));
+        nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.mul, tmp, i, getReg(new IRConstantValue(4, new IRSimpleType(32)))));
         nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.add, rd, getReg(it.ptrVal), tmp));
     }
 
-    public void visit(load it) {
+    public void visit(IRLoad it) {
         Register rd = getReg(it.result);
         Register rs = getReg(it.pointer);
-        if (it.pointer.name.charAt(0) == '@') {
+        if (it.pointer.isGlobal()) {
             nowBuildingBlock.push_back(new ASMLoad(rd, rs, 0));
             return;
         }
@@ -308,16 +305,16 @@ public class InstSelector implements IRVisitor {
         nowBuildingBlock.push_back(new ASMLoad(rd, rs, 0));
     }
 
-    public void visit(phi it) {
+    public void visit(IRPhi it) {
         VirReg tmp = getNewVirReg();
         nowBuildingBlock.push_back(new ASMMv(getReg(it.result), tmp));
         it.valLabel.forEach((blk, ent) -> {
-            if (ent instanceof variable) {
+            if (ent instanceof IRVariable) {
                 blockMap.get(blk).phi.put(nowBuildingBlock.labelName, new ASMMv(tmp, getReg(ent)));
-            } else if (ent instanceof constantValue) {
-                blockMap.get(blk).phi.put(nowBuildingBlock.labelName, new ASMLi(tmp, new Imm(((constantValue) ent).value)));
-            } else if (ent instanceof constantBool) {
-                if (((constantBool) ent).value) {
+            } else if (ent instanceof IRConstantValue) {
+                blockMap.get(blk).phi.put(nowBuildingBlock.labelName, new ASMLi(tmp, new Imm(((IRConstantValue) ent).value)));
+            } else if (ent instanceof IRConstantBool) {
+                if (((IRConstantBool) ent).value) {
                     blockMap.get(blk).phi.put(nowBuildingBlock.labelName, new ASMLi(tmp, new Imm(1)));
                 } else {
                     blockMap.get(blk).phi.put(nowBuildingBlock.labelName, new ASMLi(tmp, new Imm(0)));
@@ -328,17 +325,17 @@ public class InstSelector implements IRVisitor {
         });
     }
 
-    public void visit(ret it) {
-        if (!(it.returnValue instanceof voidEntity)) {
+    public void visit(IRRet it) {
+        if (!(it.returnValue instanceof IRVoidEntity)) {
             nowBuildingBlock.push_back(new ASMMv(new PhyReg("a0"), getReg(it.returnValue)));
         }
         nowBuildingBlock.push_back(new ASMRet());
     }
 
-    public void visit(store it) {
+    public void visit(IRStore it) {
         Register rd = getReg(it.target);
         Register rs = getReg(it.value);
-        if (it.target.name.charAt(0) == '@') {
+        if (it.target.isGlobal()) {
             nowBuildingBlock.push_back(new ASMStore(rs, rd, 0));
             return;
         }
@@ -349,7 +346,7 @@ public class InstSelector implements IRVisitor {
         nowBuildingBlock.push_back(new ASMStore(rs, rd, 0));
     }
 
-    public void visit(unconditionalBr it) {
+    public void visit(IRUnconditionalBr it) {
         nowBuildingBlock.push_back(new ASMJump(blockMap.get(it.dest).labelName));
     }
 }

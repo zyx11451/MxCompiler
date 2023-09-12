@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class IRRoot {
     //根节点
-    public ArrayList<def> definitions;
+    public ArrayList<IRDef> definitions;
     public IRRoot(){
         definitions=new ArrayList<>();
     }
@@ -36,12 +36,12 @@ public class IRRoot {
                 "declare dso_local i32 @_string.parseInt(ptr nocapture noundef readonly %0)\n" +
                 "declare dso_local i32 @_string.ord(ptr nocapture noundef readonly %0, i32 noundef %1)\n" +
                 "\n");
-        for(def definition:definitions){
-            if(definition instanceof GlobalDef) ans.append(definition.toString());
+        for(IRDef definition:definitions){
+            if(definition instanceof IRGlobalDef) ans.append(definition.toString());
             ans.append("\n");
         }
-        for(def definition:definitions){
-            if(!(definition instanceof GlobalDef)) ans.append(definition.toString());
+        for(IRDef definition:definitions){
+            if(!(definition instanceof IRGlobalDef)) ans.append(definition.toString());
             ans.append("\n");
         }
         return ans.toString();

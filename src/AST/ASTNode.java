@@ -1,6 +1,5 @@
 package AST;
 
-import IR.entity.entity;
 import Utils.position;
 
 abstract public class ASTNode {

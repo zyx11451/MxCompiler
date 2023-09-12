@@ -21,11 +21,11 @@ class VarDefListElement {
 }
 
 public class VarDefNode extends DefNode {
-    public ArrayList<VarDefListElement> define_list;
+    public ArrayList<VarDefListElement> defineList;
 
     public VarDefNode(position pos) {
         super(pos);
-        this.define_list = new ArrayList<>();
+        this.defineList = new ArrayList<>();
     }
 
     public void accept(ASTVisitor visitor) {
@@ -33,22 +33,22 @@ public class VarDefNode extends DefNode {
     }
 
     public void add(String name, Type type, ExprNode init) {
-        this.define_list.add(new VarDefListElement(name, type, init));
+        this.defineList.add(new VarDefListElement(name, type, init));
     }
 
     public String getDefineListName(int i) {
-        return define_list.get(i).name;
+        return defineList.get(i).name;
     }
 
     public Type getDefineListType(int i) {
-        return define_list.get(i).type;
+        return defineList.get(i).type;
     }
 
     public ExprNode getDefineListInit(int i) {
-        return define_list.get(i).init;
+        return defineList.get(i).init;
     }
 
     public boolean haveInit(int i) {
-        return define_list.get(i).init != null;
+        return defineList.get(i).init != null;
     }
 }

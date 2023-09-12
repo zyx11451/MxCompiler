@@ -81,7 +81,7 @@ public class SymbolCollector implements ASTVisitor {
                 nowDefiningClass.addFunction(nowDefiningFunc.functionName, nowDefiningFunc);
                 nowDefiningFunc = null;
             } else if (defs instanceof VarDefNode varDefNode) {
-                for (int i = 0; i < varDefNode.define_list.size(); ++i) {
+                for (int i = 0; i < varDefNode.defineList.size(); ++i) {
                     if (varDefNode.haveInit(i))
                         throw new SemanticError("Class Members cannot be initialized in Mx*", varDefNode.pos);
                     if (varDefNode.getDefineListType(i).isVoid())
@@ -95,11 +95,11 @@ public class SymbolCollector implements ASTVisitor {
     }
 
     public void visit(FuncDefNode it) {
-        nowDefiningFunc = new Function(it.func_name, it.return_type);
+        nowDefiningFunc = new Function(it.funcName, it.returnType);
         if (it.isConstructor) nowDefiningFunc.isConstructor = true;
-        nowDefiningFunc.returnType = it.return_type;
-        nowDefiningFunc.functionName = it.func_name;
-        for (int i = 0; i < it.parameter_list.size(); ++i) {
+        nowDefiningFunc.returnType = it.returnType;
+        nowDefiningFunc.functionName = it.funcName;
+        for (int i = 0; i < it.parameterList.size(); ++i) {
             nowDefiningFunc.addParameter(it.getParameterName(i), it.getParameterType(i));
         }
     }
@@ -188,7 +188,7 @@ public class SymbolCollector implements ASTVisitor {
                     throw new SemanticError("Function name conflict with class name", it.pos);
                 }
                 globalScope.addFunc(nowDefiningFunc.functionName, nowDefiningFunc);
-                if (Objects.equals(funcDefNode.func_name, "main")) {
+                if (Objects.equals(funcDefNode.funcName, "main")) {
                     if (!mainFuncDefined) mainFuncDefined = true;
                     else {
                         throw new SemanticError("More than one main functions", funcDefNode.pos);

@@ -18,66 +18,55 @@ import java.util.HashSet;
 public class IRBuilder implements ASTVisitor {
     public IRRoot root;
     public GlobalScope MxGlobalScope;
-    public HashMap<String, FunctionDec> funcs;
-    public HashMap<String, ClassDef> types;
-    public FunctionDef nowDefining = null;//正在定义哪个函数
-    public ClassDef nowDefiningClass = null;
-    public block nowBuildingBlock = null; //正在写哪个块。
-    public block nowForStepBlock = null;//最里层for循环的step块，用于continue的跳转
-    public block nowForEndBlock = null;//最里层
+    public HashMap<String, IRClassDef> types;
+    public IRFunctionDef nowDefining = null;//正在定义哪个函数
+    public IRClassDef nowDefiningClass = null;
+    public IRBlock nowBuildingBlock = null; //正在写哪个块。
+    public IRBlock nowForStepBlock = null;//最里层for循环的step块，用于continue的跳转
+    public IRBlock nowForEndBlock = null;//最里层
     public IRScope nowScope;
     public int blockNum = 0;
     public int variableNum = 0;
     public int constStringNum = 0;
     public int globalVariableNum = 0;
     String This = "%_this";//this指针，类方法
-    variable nowThis=null;
-    FunctionDef initGlobal = new FunctionDef("_initGlobal", new Type("void"));
+    IRVariable nowThis=null;
+    IRFunctionDef initGlobal = new IRFunctionDef("_initGlobal", new Type("void"));
     HashSet<String> nowClassMethodNames = null;
 
     public IRBuilder(IRRoot root, GlobalScope globalScope) {
         this.root = root;
         this.MxGlobalScope = globalScope;
-        this.funcs = new HashMap<>();
         this.types = new HashMap<>();
         this.nowScope = new IRScope(null);
     }
-
-    public void insertInst(inst i) {
-        if (nowBuildingBlock == null) {
-            nowDefining.functionBody.add(i);
-        } else {
-            nowBuildingBlock.statements.add(i);
-        }
-    }
-
-    public block getNewBlock() {
+    public IRBlock getNewBlock() {
         ++blockNum;
-        return new block("_b." + Integer.toString(blockNum));
+        return new IRBlock("_b." + Integer.toString(blockNum));
     }
 
-    public variable getNewVariable(IRType t) {
+    public IRVariable getNewVariable(IRType t) {
         ++variableNum;
-        return new variable(t, "%_" + variableNum);
+        return new IRVariable(t, "%_" + variableNum);
     }
 
-    public variable getNewGlobal(IRType t) {
+    public IRVariable getNewGlobal(IRType t) {
         ++globalVariableNum;
-        return new variable(t, "@_" + globalVariableNum);
+        return new IRVariable(t, "@_" + globalVariableNum);
     }
 
-    public variable getNewConstString() {
+    public IRVariable getNewConstString() {
         ++constStringNum;
-        return new variable(new IRPointerType(new IRSimpleType(8)), "@.str" + constStringNum);
+        return new IRVariable(new IRPointerType(new IRSimpleType(8)), "@.str" + constStringNum);
     }
 
-    public variable getPointerTarget(variable v) {
+    public IRVariable getPointerTarget(IRVariable v) {
         //因为变量都是指针形式，所以要靠这个获取它们的值，用于return等场合
         //能做左值的返回指针
         //根据节点是否assignable 确定是否扒一层指针
         if (v.type instanceof IRPointerType) {
-            variable ans = getNewVariable(((IRPointerType) v.type).targetType);
-            nowBuildingBlock.addStatements(new load(ans, v));
+            IRVariable ans = getNewVariable(((IRPointerType) v.type).targetType);
+            nowBuildingBlock.addStatements(new IRLoad(ans, v));
             return ans;
         } else {
             return v;
@@ -103,11 +92,11 @@ public class IRBuilder implements ASTVisitor {
         nowClassMethodNames = new HashSet<>();
         nowScope.isClassScope = true;
         nowDefiningClass = types.get(it.classname);
-        nowThis=new variable(new IRPointerType(new IRBasicClassType(it.classname)), This);
-        nowDefiningClass.index.forEach((s, i) -> nowScope.var.put(s, new variable(new IRSimpleType(32), "should_not_in_IR_" + s)));
+        nowThis=new IRVariable(new IRPointerType(new IRBasicClassType(it.classname)), This);
+        nowDefiningClass.index.forEach((s, i) -> nowScope.var.put(s, new IRVariable(new IRSimpleType(32), "should_not_in_IR_" + s)));
         it.elements.forEach(defNode -> {
             if (defNode instanceof FuncDefNode) {
-                nowClassMethodNames.add(((FuncDefNode) defNode).func_name);
+                nowClassMethodNames.add(((FuncDefNode) defNode).funcName);
             }
         });
         it.elements.forEach(defNode -> {
@@ -119,8 +108,8 @@ public class IRBuilder implements ASTVisitor {
             }
         });
         if (!nowDefiningClass.constructFunctionDefined) {
-            FunctionDef constructor = new FunctionDef(it.classname + "." + it.classname, new Type("void"));
-            constructor.functionBody.add(new ret(new voidEntity()));
+            IRFunctionDef constructor = new IRFunctionDef(it.classname + "." + it.classname, new Type("void"));
+            constructor.functionBody.add(new IRRet(new IRVoidEntity()));
             root.definitions.add(constructor);
         }
         nowScope = nowScope.parent;
@@ -130,26 +119,26 @@ public class IRBuilder implements ASTVisitor {
     public void visit(FuncDefNode it) {
         nowScope = new IRScope(nowScope);
         nowBuildingBlock = getNewBlock();
-        if (it.func_name.equals("main")) {
+        if (it.funcName.equals("main")) {
             //main函数
-            nowDefining = new FunctionDef("main", it.return_type);
-            nowDefining.functionBody.add(new call("_initGlobal", new IRVoidType()));
-            nowDefining.functionBody.add(new unconditionalBr(nowBuildingBlock));
+            nowDefining = new IRFunctionDef("main", it.returnType);
+            nowDefining.functionBody.add(new IRCall("_initGlobal", new IRVoidType()));
+            nowDefining.functionBody.add(new IRUnconditionalBr(nowBuildingBlock));
         } else {
-            if (it.return_type != null) {
-                nowDefining = new FunctionDef(it.func_name, it.return_type);
+            if (it.returnType != null) {
+                nowDefining = new IRFunctionDef(it.funcName, it.returnType);
             } else {
                 nowDefiningClass.constructFunctionDefined = true;
-                nowDefining = new FunctionDef(it.func_name, new Type("void"));
-                it.return_type = new Type("void");//构造AST的时候sb了
+                nowDefining = new IRFunctionDef(it.funcName, new Type("void"));
+                it.returnType = new Type("void");//构造AST的时候sb了
             }
 
-            for (int i = 0; i < it.parameter_list.size(); ++i) {
+            for (int i = 0; i < it.parameterList.size(); ++i) {
                 IRType t = TransTypeToIRType(it.getParameterType(i));
-                variable v = getNewVariable(t);
-                variable p = getNewVariable(new IRPointerType(t));
-                nowBuildingBlock.addStatements(new alloca(p, t));
-                nowBuildingBlock.addStatements(new store(v, (IRPointerType) p.type, p));
+                IRVariable v = getNewVariable(t);
+                IRVariable p = getNewVariable(new IRPointerType(t));
+                nowBuildingBlock.addStatements(new IRAlloca(p, t));
+                nowBuildingBlock.addStatements(new IRStore(v, (IRPointerType) p.type, p));
                 nowDefining.parameters.add(v);
                 nowScope.var.put(it.getParameterName(i), p);
             }
@@ -167,26 +156,26 @@ public class IRBuilder implements ASTVisitor {
             nowDefining.functionBody.add(new ret(new voidEntity()));
         }*/
         //清除空块，但理论上不应有空块
-        ret defaultRet;
-        if (it.return_type.isInt()) defaultRet = new ret(new constantValue(0, new IRSimpleType(32)));
-        else if (it.return_type.isBool()) defaultRet = new ret(new constantBool(false));
-        else if (it.return_type.isVoid()) defaultRet = new ret(new voidEntity());
-        else defaultRet = new ret(new IRNull());
+        IRRet defaultRet;
+        if (it.returnType.isInt()) defaultRet = new IRRet(new IRConstantValue(0, new IRSimpleType(32)));
+        else if (it.returnType.isBool()) defaultRet = new IRRet(new IRConstantBool(false));
+        else if (it.returnType.isVoid()) defaultRet = new IRRet(new IRVoidEntity());
+        else defaultRet = new IRRet(new IRNull());
         for (int i = nowDefining.functionBody.size() - 1; i >= 0; --i) {
-            if (!(nowDefining.functionBody.get(i) instanceof block)) continue;
-            if (((block) nowDefining.functionBody.get(i)).statements.isEmpty()) {
-                ((block) nowDefining.functionBody.get(i)).statements.add(defaultRet);
+            if (!(nowDefining.functionBody.get(i) instanceof IRBlock)) continue;
+            if (((IRBlock) nowDefining.functionBody.get(i)).statements.isEmpty()) {
+                ((IRBlock) nowDefining.functionBody.get(i)).statements.add(defaultRet);
             }
             boolean haveTerminal=false;
-            for(int j=0;j<((block) nowDefining.functionBody.get(i)).statements.size();++j){
-                inst in=((block) nowDefining.functionBody.get(i)).statements.get(j);
-                if(in instanceof unconditionalBr||in instanceof conditionalBr||in instanceof ret){
+            for(int j = 0; j<((IRBlock) nowDefining.functionBody.get(i)).statements.size(); ++j){
+                IRInst in=((IRBlock) nowDefining.functionBody.get(i)).statements.get(j);
+                if(in instanceof IRUnconditionalBr ||in instanceof IRConditionalBr ||in instanceof IRRet){
                     haveTerminal=true;
                     break;
                 }
             }
             if(!haveTerminal){
-                ((block) nowDefining.functionBody.get(i)).statements.add(defaultRet);
+                ((IRBlock) nowDefining.functionBody.get(i)).statements.add(defaultRet);
             }
         }
     }
@@ -198,21 +187,21 @@ public class IRBuilder implements ASTVisitor {
             if (initGlobal.functionBody.isEmpty()) {
                 nowBuildingBlock = getNewBlock();
                 nowDefining.functionBody.add(nowBuildingBlock);
-            } else nowBuildingBlock = (block) initGlobal.functionBody.get(initGlobal.functionBody.size() - 1);
+            } else nowBuildingBlock = (IRBlock) initGlobal.functionBody.get(initGlobal.functionBody.size() - 1);
 
-            for (int i = 0; i < it.define_list.size(); ++i) {
+            for (int i = 0; i < it.defineList.size(); ++i) {
                 IRType t = TransTypeToIRType(it.getDefineListType(i));
-                variable v = getNewGlobal(new IRPointerType(t));
-                root.definitions.add(new GlobalDef(v.name, t));
+                IRVariable v = getNewGlobal(new IRPointerType(t));
+                root.definitions.add(new IRGlobalDef(v.name, t));
                 if (it.getDefineListInit(i) != null) {
                     it.getDefineListInit(i).accept(this);
-                    entity init = it.getDefineListInit(i).ent;
+                    IREntity init = it.getDefineListInit(i).ent;
                     if (it.getDefineListInit(i).isAssignable()) {
-                        variable v1 = getNewVariable(((IRPointerType) init.getType()).targetType);
-                        nowBuildingBlock.addStatements(new load(v1, (variable) init));
+                        IRVariable v1 = getNewVariable(((IRPointerType) init.getType()).targetType);
+                        nowBuildingBlock.addStatements(new IRLoad(v1, (IRVariable) init));
                         init = v1;
                     }
-                    nowBuildingBlock.addStatements(new store(init, (IRPointerType) v.type, v));
+                    nowBuildingBlock.addStatements(new IRStore(init, (IRPointerType) v.type, v));
                 }
                 nowScope.var.put(it.getDefineListName(i), v);
             }
@@ -220,19 +209,19 @@ public class IRBuilder implements ASTVisitor {
             return;
         }
         //先不考虑全局变量
-        for (int i = 0; i < it.define_list.size(); ++i) {
+        for (int i = 0; i < it.defineList.size(); ++i) {
             IRType t = TransTypeToIRType(it.getDefineListType(i));
-            variable v = getNewVariable(new IRPointerType(t));
-            nowBuildingBlock.addStatements(new alloca(v, t));
+            IRVariable v = getNewVariable(new IRPointerType(t));
+            nowBuildingBlock.addStatements(new IRAlloca(v, t));
             if (it.getDefineListInit(i) != null) {
                 it.getDefineListInit(i).accept(this);
-                entity init = it.getDefineListInit(i).ent;
+                IREntity init = it.getDefineListInit(i).ent;
                 if (it.getDefineListInit(i).isAssignable()) {
-                    variable v1 = getNewVariable(((IRPointerType) init.getType()).targetType);
-                    nowBuildingBlock.addStatements(new load(v1, (variable) init));
+                    IRVariable v1 = getNewVariable(((IRPointerType) init.getType()).targetType);
+                    nowBuildingBlock.addStatements(new IRLoad(v1, (IRVariable) init));
                     init = v1;
                 }
-                nowBuildingBlock.addStatements(new store(init, (IRPointerType) v.type, v));
+                nowBuildingBlock.addStatements(new IRStore(init, (IRPointerType) v.type, v));
             }
             nowScope.var.put(it.getDefineListName(i), v);
         }
@@ -241,22 +230,22 @@ public class IRBuilder implements ASTVisitor {
     public void visit(ArrayElementExprNode it) {
         it.arrayExpr.accept(this);
         it.indexExpr.accept(this);
-        entity ar = it.arrayExpr.ent;
-        entity in = it.indexExpr.ent;
+        IREntity ar = it.arrayExpr.ent;
+        IREntity in = it.indexExpr.ent;
         if (it.arrayExpr.isAssignable()) {
-            variable v = getNewVariable(((IRPointerType) ar.getType()).targetType);
-            nowBuildingBlock.addStatements(new load(v, (variable) ar));
+            IRVariable v = getNewVariable(((IRPointerType) ar.getType()).targetType);
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) ar));
             ar = v;
         }
         if (it.indexExpr.isAssignable()) {
-            variable v = getNewVariable(((IRPointerType) in.getType()).targetType);
-            nowBuildingBlock.addStatements(new load(v, (variable) in));
+            IRVariable v = getNewVariable(((IRPointerType) in.getType()).targetType);
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) in));
             in = v;
         }
         //数组实际上为指向数组头的指针，数组的每个元素都占4个bytes
         IRType elementType = ((IRBasicArrayType) ((IRPointerType) ar.getType()).targetType).elementType;
-        variable ans = getNewVariable(new IRPointerType(elementType));
-        getElementPtr getArrayElementPointer = new getElementPtr(new IRSimpleType(32), (variable) ar, ans);
+        IRVariable ans = getNewVariable(new IRPointerType(elementType));
+        IRGetElementPtr getArrayElementPointer = new IRGetElementPtr(new IRSimpleType(32), (IRVariable) ar, ans);
         getArrayElementPointer.addIdx(in);
         nowBuildingBlock.addStatements(getArrayElementPointer);
         it.ent = ans;
@@ -265,14 +254,14 @@ public class IRBuilder implements ASTVisitor {
     public void visit(AssignExprNode it) {
         it.lhs.accept(this);
         it.rhs.accept(this);
-        entity lhs = it.lhs.ent;
-        entity rhs = it.rhs.ent;
+        IREntity lhs = it.lhs.ent;
+        IREntity rhs = it.rhs.ent;
         if (it.rhs.isAssignable()) {
-            variable v = getNewVariable(((IRPointerType) rhs.getType()).targetType);
-            nowBuildingBlock.addStatements(new load(v, (variable) rhs));
+            IRVariable v = getNewVariable(((IRPointerType) rhs.getType()).targetType);
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) rhs));
             rhs = v;
         }
-        nowBuildingBlock.addStatements(new store(rhs, (IRPointerType) lhs.getType(), (variable) lhs));
+        nowBuildingBlock.addStatements(new IRStore(rhs, (IRPointerType) lhs.getType(), (IRVariable) lhs));
     }
 
     public void visit(BinaryExprNode it) {
@@ -282,108 +271,108 @@ public class IRBuilder implements ASTVisitor {
             it.rhs.accept(this);
             if (it.type.isInt()) {
                 //i32运算指令
-                entity lhs = it.lhs.ent;
-                entity rhs = it.rhs.ent;
+                IREntity lhs = it.lhs.ent;
+                IREntity rhs = it.rhs.ent;
                 if (it.lhs.isAssignable()) {
-                    variable v = getNewVariable(new IRSimpleType(32));
-                    nowBuildingBlock.addStatements(new load(v, (variable) lhs));
+                    IRVariable v = getNewVariable(new IRSimpleType(32));
+                    nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) lhs));
                     lhs = v;
                 }
                 if (it.rhs.isAssignable()) {
-                    variable v = getNewVariable(new IRSimpleType(32));
-                    nowBuildingBlock.addStatements(new load(v, (variable) rhs));
+                    IRVariable v = getNewVariable(new IRSimpleType(32));
+                    nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) rhs));
                     rhs = v;
                 }
-                variable ans = getNewVariable(new IRSimpleType(32));
+                IRVariable ans = getNewVariable(new IRSimpleType(32));
                 if (it.op == BinaryExprNode.binaryOpType.plus) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.add));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.add));
                 } else if (it.op == BinaryExprNode.binaryOpType.minus) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.sub));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.sub));
                 } else if (it.op == BinaryExprNode.binaryOpType.multiply) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.mul));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.mul));
                 } else if (it.op == BinaryExprNode.binaryOpType.divide) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.sdiv));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.sdiv));
                 } else if (it.op == BinaryExprNode.binaryOpType.mod) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.srem));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.srem));
                 } else if (it.op == BinaryExprNode.binaryOpType.or) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.or));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.or));
                 } else if (it.op == BinaryExprNode.binaryOpType.and) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.and));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.and));
                 } else if (it.op == BinaryExprNode.binaryOpType.caret) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.xor));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.xor));
                 } else if (it.op == BinaryExprNode.binaryOpType.leftShift) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.shl));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.shl));
                 } else if (it.op == BinaryExprNode.binaryOpType.rightShift) {
-                    nowBuildingBlock.addStatements(new binary(ans, 32, lhs, rhs, binary.opType.ashr));
+                    nowBuildingBlock.addStatements(new IRBinary(ans, 32, lhs, rhs, IRBinary.opType.ashr));
                 }
                 it.ent = ans;
             } else {
                 //icmp指令
-                entity lhs = it.lhs.ent;
-                entity rhs = it.rhs.ent;
+                IREntity lhs = it.lhs.ent;
+                IREntity rhs = it.rhs.ent;
                 if (it.lhs.isAssignable()) {
-                    variable v = getNewVariable(new IRSimpleType(32));
-                    nowBuildingBlock.addStatements(new load(v, (variable) lhs));
+                    IRVariable v = getNewVariable(new IRSimpleType(32));
+                    nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) lhs));
                     lhs = v;
                 }
                 if (it.rhs.isAssignable()) {
-                    variable v = getNewVariable(new IRSimpleType(32));
-                    nowBuildingBlock.addStatements(new load(v, (variable) rhs));
+                    IRVariable v = getNewVariable(new IRSimpleType(32));
+                    nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) rhs));
                     rhs = v;
                 }
-                variable ans = getNewVariable(new IRSimpleType(1));
+                IRVariable ans = getNewVariable(new IRSimpleType(1));
                 if (it.op == BinaryExprNode.binaryOpType.equal) {
-                    nowBuildingBlock.addStatements(new compare(ans, 32, lhs, rhs, compare.condType.eq));
+                    nowBuildingBlock.addStatements(new IRCompare(ans, 32, lhs, rhs, IRCompare.condType.eq));
                 } else if (it.op == BinaryExprNode.binaryOpType.notEqual) {
-                    nowBuildingBlock.addStatements(new compare(ans, 32, lhs, rhs, compare.condType.ne));
+                    nowBuildingBlock.addStatements(new IRCompare(ans, 32, lhs, rhs, IRCompare.condType.ne));
                 } else if (it.op == BinaryExprNode.binaryOpType.less) {
-                    nowBuildingBlock.addStatements(new compare(ans, 32, lhs, rhs, compare.condType.slt));
+                    nowBuildingBlock.addStatements(new IRCompare(ans, 32, lhs, rhs, IRCompare.condType.slt));
                 } else if (it.op == BinaryExprNode.binaryOpType.lessEqual) {
-                    nowBuildingBlock.addStatements(new compare(ans, 32, lhs, rhs, compare.condType.sle));
+                    nowBuildingBlock.addStatements(new IRCompare(ans, 32, lhs, rhs, IRCompare.condType.sle));
                 } else if (it.op == BinaryExprNode.binaryOpType.greater) {
-                    nowBuildingBlock.addStatements(new compare(ans, 32, lhs, rhs, compare.condType.sgt));
+                    nowBuildingBlock.addStatements(new IRCompare(ans, 32, lhs, rhs, IRCompare.condType.sgt));
                 } else if (it.op == BinaryExprNode.binaryOpType.greaterEqual) {
-                    nowBuildingBlock.addStatements(new compare(ans, 32, lhs, rhs, compare.condType.sge));
+                    nowBuildingBlock.addStatements(new IRCompare(ans, 32, lhs, rhs, IRCompare.condType.sge));
                 }
                 it.ent = ans;
             }
         } else if (it.lhs.type.isBool()) {
             //（短路求值）逻辑运算
-            variable ans = getNewVariable(new IRSimpleType(1));
+            IRVariable ans = getNewVariable(new IRSimpleType(1));
             it.lhs.accept(this);
-            entity lhs = it.lhs.ent;
+            IREntity lhs = it.lhs.ent;
             if (it.lhs.isAssignable()) {
-                variable v = getNewVariable(new IRSimpleType(1));
-                nowBuildingBlock.addStatements(new load(v, (variable) lhs));
+                IRVariable v = getNewVariable(new IRSimpleType(1));
+                nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) lhs));
                 lhs = v;
             }
-            block itBlock = nowBuildingBlock;//nowBuildingBlock最后要变成endBlock
-            block rhsBlock = getNewBlock();
+            IRBlock itBlock = nowBuildingBlock;//nowBuildingBlock最后要变成endBlock
+            IRBlock rhsBlock = getNewBlock();
             nowBuildingBlock = rhsBlock;
             it.rhs.accept(this);
-            entity rhs = it.rhs.ent;
+            IREntity rhs = it.rhs.ent;
             if (it.rhs.isAssignable()) {
-                variable v = getNewVariable(new IRSimpleType(1));
-                nowBuildingBlock.addStatements(new load(v, (variable) rhs));
+                IRVariable v = getNewVariable(new IRSimpleType(1));
+                nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) rhs));
                 rhs = v;
             }
-            block endBlock = getNewBlock();
+            IRBlock endBlock = getNewBlock();
             nowBuildingBlock = endBlock;//之后就一直是endBlock
-            phi phiInst = new phi(ans, ans.type);
+            IRPhi phiInst = new IRPhi(ans, ans.type);
             phiInst.valLabel.put(itBlock, lhs);
             phiInst.valLabel.put(rhsBlock, rhs);
             endBlock.addStatements(phiInst);
             if (it.op == BinaryExprNode.binaryOpType.oror) {
                 //为itBlock和rhsBlock添加跳转
-                itBlock.addStatements(new conditionalBr(lhs, endBlock, rhsBlock));
-                rhsBlock.addStatements(new unconditionalBr(endBlock));
+                itBlock.addStatements(new IRConditionalBr(lhs, endBlock, rhsBlock));
+                rhsBlock.addStatements(new IRUnconditionalBr(endBlock));
                 //把新增block添加进nowDefining中（block没有包含关系）
                 nowDefining.functionBody.add(rhsBlock);
                 nowDefining.functionBody.add(endBlock);
             } else if (it.op == BinaryExprNode.binaryOpType.andand) {
                 //为itBlock和rhsBlock添加跳转
-                itBlock.addStatements(new conditionalBr(lhs, rhsBlock, endBlock));
-                rhsBlock.addStatements(new unconditionalBr(endBlock));
+                itBlock.addStatements(new IRConditionalBr(lhs, rhsBlock, endBlock));
+                rhsBlock.addStatements(new IRUnconditionalBr(endBlock));
                 //把新增block添加进nowDefining中（block没有包含关系）
                 nowDefining.functionBody.add(rhsBlock);
                 nowDefining.functionBody.add(endBlock);
@@ -392,21 +381,21 @@ public class IRBuilder implements ASTVisitor {
         } else if (it.lhs.type.isString()) {
             if (it.op == BinaryExprNode.binaryOpType.plus) {
                 //string加法
-                variable ans = getNewVariable(new IRPointerType(new IRSimpleType(8)));
-                call stringPlus = new call("_string.plus", new IRPointerType(new IRSimpleType(8)));
+                IRVariable ans = getNewVariable(new IRPointerType(new IRSimpleType(8)));
+                IRCall stringPlus = new IRCall("_string.plus", new IRPointerType(new IRSimpleType(8)));
                 stringPlus.result = ans;
                 it.lhs.accept(this);
                 it.rhs.accept(this);
-                entity lhs = it.lhs.ent;
-                entity rhs = it.rhs.ent;
+                IREntity lhs = it.lhs.ent;
+                IREntity rhs = it.rhs.ent;
                 if (it.lhs.isAssignable()) {
-                    variable v = getNewVariable(new IRPointerType(new IRSimpleType(8)));
-                    nowBuildingBlock.addStatements(new load(v, (variable) lhs));
+                    IRVariable v = getNewVariable(new IRPointerType(new IRSimpleType(8)));
+                    nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) lhs));
                     lhs = v;
                 }
                 if (it.rhs.isAssignable()) {
-                    variable v = getNewVariable(new IRPointerType(new IRSimpleType(8)));
-                    nowBuildingBlock.addStatements(new load(v, (variable) rhs));
+                    IRVariable v = getNewVariable(new IRPointerType(new IRSimpleType(8)));
+                    nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) rhs));
                     rhs = v;
                 }
                 stringPlus.parameters.add(lhs);
@@ -415,33 +404,33 @@ public class IRBuilder implements ASTVisitor {
                 it.ent = ans;
             } else {
                 //string比较
-                variable ans = getNewVariable(new IRSimpleType(1));
-                call stringCmp = null;
+                IRVariable ans = getNewVariable(new IRSimpleType(1));
+                IRCall stringCmp = null;
                 if (it.op == BinaryExprNode.binaryOpType.equal) {
-                    stringCmp = new call("_string.eq", new IRSimpleType(1));
+                    stringCmp = new IRCall("_string.eq", new IRSimpleType(1));
                 } else if (it.op == BinaryExprNode.binaryOpType.notEqual) {
-                    stringCmp = new call("_string.ne", new IRSimpleType(1));
+                    stringCmp = new IRCall("_string.ne", new IRSimpleType(1));
                 } else if (it.op == BinaryExprNode.binaryOpType.greater) {
-                    stringCmp = new call("_string.g", new IRSimpleType(1));
+                    stringCmp = new IRCall("_string.g", new IRSimpleType(1));
                 } else if (it.op == BinaryExprNode.binaryOpType.greaterEqual) {
-                    stringCmp = new call("_string.ge", new IRSimpleType(1));
+                    stringCmp = new IRCall("_string.ge", new IRSimpleType(1));
                 } else if (it.op == BinaryExprNode.binaryOpType.less) {
-                    stringCmp = new call("_string.l", new IRSimpleType(1));
+                    stringCmp = new IRCall("_string.l", new IRSimpleType(1));
                 } else if (it.op == BinaryExprNode.binaryOpType.lessEqual) {
-                    stringCmp = new call("_string.le", new IRSimpleType(1));
+                    stringCmp = new IRCall("_string.le", new IRSimpleType(1));
                 }
                 it.lhs.accept(this);
                 it.rhs.accept(this);
-                entity lhs = it.lhs.ent;
-                entity rhs = it.rhs.ent;
+                IREntity lhs = it.lhs.ent;
+                IREntity rhs = it.rhs.ent;
                 if (it.lhs.isAssignable()) {
-                    variable v = getNewVariable(new IRPointerType(new IRSimpleType(8)));
-                    nowBuildingBlock.addStatements(new load(v, (variable) lhs));
+                    IRVariable v = getNewVariable(new IRPointerType(new IRSimpleType(8)));
+                    nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) lhs));
                     lhs = v;
                 }
                 if (it.rhs.isAssignable()) {
-                    variable v = getNewVariable(new IRPointerType(new IRSimpleType(8)));
-                    nowBuildingBlock.addStatements(new load(v, (variable) rhs));
+                    IRVariable v = getNewVariable(new IRPointerType(new IRSimpleType(8)));
+                    nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) rhs));
                     rhs = v;
                 }
                 assert stringCmp != null;
@@ -453,25 +442,25 @@ public class IRBuilder implements ASTVisitor {
             }
         } else {
             //类==null
-            variable ans = getNewVariable(new IRSimpleType(1));
+            IRVariable ans = getNewVariable(new IRSimpleType(1));
             it.lhs.accept(this);
             it.rhs.accept(this);
-            entity lhs = it.lhs.ent;
-            entity rhs = it.rhs.ent;
+            IREntity lhs = it.lhs.ent;
+            IREntity rhs = it.rhs.ent;
             if (it.lhs.isAssignable()) {
-                variable v = getNewVariable(((IRPointerType) lhs.getType()).targetType);
-                nowBuildingBlock.addStatements(new load(v, (variable) lhs));
+                IRVariable v = getNewVariable(((IRPointerType) lhs.getType()).targetType);
+                nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) lhs));
                 lhs = v;
             }
             if (it.rhs.isAssignable()) {
-                variable v = getNewVariable(((IRPointerType) rhs.getType()).targetType);
-                nowBuildingBlock.addStatements(new load(v, (variable) rhs));
+                IRVariable v = getNewVariable(((IRPointerType) rhs.getType()).targetType);
+                nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) rhs));
                 rhs = v;
             }
             if (it.op == BinaryExprNode.binaryOpType.equal) {
-                nowBuildingBlock.addStatements(new compare(ans, lhs.getType(), lhs, rhs, compare.condType.eq));
+                nowBuildingBlock.addStatements(new IRCompare(ans, lhs.getType(), lhs, rhs, IRCompare.condType.eq));
             } else {
-                nowBuildingBlock.addStatements(new compare(ans, lhs.getType(), lhs, rhs, compare.condType.ne));
+                nowBuildingBlock.addStatements(new IRCompare(ans, lhs.getType(), lhs, rhs, IRCompare.condType.ne));
             }
             it.ent = ans;
         }
@@ -488,19 +477,19 @@ public class IRBuilder implements ASTVisitor {
         if (nowClassMethodNames != null) {
             if (nowClassMethodNames.contains(it.funcName)) {
                 it.parameters.forEach(p -> p.accept(this));
-                call callFunc = new call(nowDefiningClass.name + "." + it.funcName, TransTypeToIRType(it.type));
+                IRCall callFunc = new IRCall(nowDefiningClass.name + "." + it.funcName, TransTypeToIRType(it.type));
                 callFunc.parameters.add(nowThis);
                 it.parameters.forEach(p -> {
-                    entity pV = p.ent;
+                    IREntity pV = p.ent;
                     if (p.isAssignable()) {
-                        variable v = getNewVariable(((IRPointerType) p.ent.getType()).targetType);
-                        nowBuildingBlock.addStatements(new load(v, (variable) pV));
+                        IRVariable v = getNewVariable(((IRPointerType) p.ent.getType()).targetType);
+                        nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) pV));
                         pV = v;
                     }
                     callFunc.parameters.add(pV);
                 });
                 if (!(callFunc.returnType instanceof IRVoidType)) {
-                    variable rt = getNewVariable(callFunc.returnType);
+                    IRVariable rt = getNewVariable(callFunc.returnType);
                     callFunc.result = rt;
                     it.ent = rt;
                 }
@@ -509,18 +498,18 @@ public class IRBuilder implements ASTVisitor {
             }
         }
         it.parameters.forEach(p -> p.accept(this));
-        call callFunc = new call(it.funcName, TransTypeToIRType(it.type));
+        IRCall callFunc = new IRCall(it.funcName, TransTypeToIRType(it.type));
         it.parameters.forEach(p -> {
-            entity pV = p.ent;
+            IREntity pV = p.ent;
             if (p.isAssignable()) {
-                variable v = getNewVariable(((IRPointerType) p.ent.getType()).targetType);
-                nowBuildingBlock.addStatements(new load(v, (variable) pV));
+                IRVariable v = getNewVariable(((IRPointerType) p.ent.getType()).targetType);
+                nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) pV));
                 pV = v;
             }
             callFunc.parameters.add(pV);
         });
         if (!(callFunc.returnType instanceof IRVoidType)) {
-            variable rt = getNewVariable(callFunc.returnType);
+            IRVariable rt = getNewVariable(callFunc.returnType);
             callFunc.result = rt;
             it.ent = rt;
         }
@@ -529,89 +518,89 @@ public class IRBuilder implements ASTVisitor {
 
     public void visit(MemberExprNode it) {
         it.familyExpr.accept(this);
-        entity family = it.familyExpr.ent;//此处应该是class**或this
+        IREntity family = it.familyExpr.ent;//此处应该是class**或this
         if (it.familyExpr.isAssignable()) {
-            variable v = getNewVariable(((IRPointerType) family.getType()).targetType);
-            nowBuildingBlock.addStatements(new load(v, (variable) family));
+            IRVariable v = getNewVariable(((IRPointerType) family.getType()).targetType);
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) family));
             family = v;
         }
         //此处family变为class*
         int pos = types.get(it.familyExpr.type.type_name).index.get(it.memberName);
         IRType targetType = types.get(it.familyExpr.type.type_name).elements.get(pos);
-        variable ans = getNewVariable(new IRPointerType(targetType));
-        getElementPtr gep = new getElementPtr(((IRPointerType) family.getType()).targetType, (variable) family, ans);
-        gep.idx.add(new constantValue(0, new IRSimpleType(32)));//取第0个class
-        gep.idx.add(new constantValue(pos, new IRSimpleType(32)));//取class的第pos个元素
+        IRVariable ans = getNewVariable(new IRPointerType(targetType));
+        IRGetElementPtr gep = new IRGetElementPtr(((IRPointerType) family.getType()).targetType, (IRVariable) family, ans);
+        gep.idx.add(new IRConstantValue(0, new IRSimpleType(32)));//取第0个class
+        gep.idx.add(new IRConstantValue(pos, new IRSimpleType(32)));//取class的第pos个元素
         nowBuildingBlock.addStatements(gep);
         it.ent = ans;
     }
 
-    public variable newArray(ArrayList<ExprNode> in, IRType elementType, int dimension) {
+    public IRVariable newArray(ArrayList<ExprNode> in, IRType elementType, int dimension) {
 
-        variable ans = getNewVariable(new IRPointerType(elementType));//真正的数组0号位开头
+        IRVariable ans = getNewVariable(new IRPointerType(elementType));//真正的数组0号位开头
         in.get(0).accept(this);
-        entity size = in.get(0).ent;
+        IREntity size = in.get(0).ent;
         if (in.get(0).isAssignable()) {
-            variable v = getNewVariable(((IRPointerType) size.getType()).targetType);
-            nowBuildingBlock.addStatements(new load(v, (variable) size));
+            IRVariable v = getNewVariable(((IRPointerType) size.getType()).targetType);
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) size));
             size = v;
         }
-        variable ints = getNewVariable(new IRSimpleType(32));
-        nowBuildingBlock.addStatements(new binary(ints, ints.getType(), size, new constantValue(1, new IRSimpleType(32)), binary.opType.add));
-        variable bytes = getNewVariable(new IRSimpleType(32));
-        nowBuildingBlock.addStatements(new binary(bytes, bytes.getType(), ints, new constantValue(4, new IRSimpleType(32)), binary.opType.mul));
-        variable arrayHead = getNewVariable(new IRPointerType(elementType));//数组这段空间的一开头
-        call mallocFunc = new call("_malloc", arrayHead.getType());
+        IRVariable ints = getNewVariable(new IRSimpleType(32));
+        nowBuildingBlock.addStatements(new IRBinary(ints, ints.getType(), size, new IRConstantValue(1, new IRSimpleType(32)), IRBinary.opType.add));
+        IRVariable bytes = getNewVariable(new IRSimpleType(32));
+        nowBuildingBlock.addStatements(new IRBinary(bytes, bytes.getType(), ints, new IRConstantValue(4, new IRSimpleType(32)), IRBinary.opType.mul));
+        IRVariable arrayHead = getNewVariable(new IRPointerType(elementType));//数组这段空间的一开头
+        IRCall mallocFunc = new IRCall("_malloc", arrayHead.getType());
         mallocFunc.result = arrayHead;
         mallocFunc.parameters.add(bytes);
         nowBuildingBlock.addStatements(mallocFunc);
-        variable arraySizePtr = getNewVariable(new IRPointerType(new IRSimpleType(32)));
-        getElementPtr getArraySizePtr = new getElementPtr(new IRSimpleType(32), arrayHead, arraySizePtr);
-        getArraySizePtr.addIdx(new constantValue(0, new IRSimpleType(32)));
+        IRVariable arraySizePtr = getNewVariable(new IRPointerType(new IRSimpleType(32)));
+        IRGetElementPtr getArraySizePtr = new IRGetElementPtr(new IRSimpleType(32), arrayHead, arraySizePtr);
+        getArraySizePtr.addIdx(new IRConstantValue(0, new IRSimpleType(32)));
         nowBuildingBlock.addStatements(getArraySizePtr);
-        nowBuildingBlock.addStatements(new store(size, (IRPointerType) arraySizePtr.type, arraySizePtr));
-        getElementPtr getTrueArrayHeadPtr = new getElementPtr(new IRSimpleType(32), arrayHead, ans);//令ans是数组0号位开头
-        getTrueArrayHeadPtr.addIdx(new constantValue(1, new IRSimpleType(32)));
+        nowBuildingBlock.addStatements(new IRStore(size, (IRPointerType) arraySizePtr.type, arraySizePtr));
+        IRGetElementPtr getTrueArrayHeadPtr = new IRGetElementPtr(new IRSimpleType(32), arrayHead, ans);//令ans是数组0号位开头
+        getTrueArrayHeadPtr.addIdx(new IRConstantValue(1, new IRSimpleType(32)));
         nowBuildingBlock.addStatements(getTrueArrayHeadPtr);
         //需要：一个循环来对所有元素进行内存分配和调用构造函数，必须是写在IR里的，因为我不知道数组大小
-        variable counter = getNewVariable(new IRPointerType(new IRSimpleType(32)));
-        nowBuildingBlock.addStatements(new alloca(counter, new IRSimpleType(32)));
-        nowBuildingBlock.addStatements(new store(new constantValue(0, new IRSimpleType(32)), (IRPointerType) counter.type, counter));
-        block condBlk = getNewBlock();
-        block stepBlk = getNewBlock();
-        block loopBlk = getNewBlock();
-        block endBlk = getNewBlock();
-        nowBuildingBlock.addStatements(new unconditionalBr(condBlk));
-        variable counterValue1 = getNewVariable(new IRSimpleType(32));
-        condBlk.addStatements(new load(counterValue1, counter));
-        variable cmp = getNewVariable(new IRSimpleType(1));
-        condBlk.addStatements(new compare(cmp, 32, counterValue1, size, compare.condType.slt));
-        condBlk.addStatements(new conditionalBr(cmp, loopBlk, endBlk));
+        IRVariable counter = getNewVariable(new IRPointerType(new IRSimpleType(32)));
+        nowBuildingBlock.addStatements(new IRAlloca(counter, new IRSimpleType(32)));
+        nowBuildingBlock.addStatements(new IRStore(new IRConstantValue(0, new IRSimpleType(32)), (IRPointerType) counter.type, counter));
+        IRBlock condBlk = getNewBlock();
+        IRBlock stepBlk = getNewBlock();
+        IRBlock loopBlk = getNewBlock();
+        IRBlock endBlk = getNewBlock();
+        nowBuildingBlock.addStatements(new IRUnconditionalBr(condBlk));
+        IRVariable counterValue1 = getNewVariable(new IRSimpleType(32));
+        condBlk.addStatements(new IRLoad(counterValue1, counter));
+        IRVariable cmp = getNewVariable(new IRSimpleType(1));
+        condBlk.addStatements(new IRCompare(cmp, 32, counterValue1, size, IRCompare.condType.slt));
+        condBlk.addStatements(new IRConditionalBr(cmp, loopBlk, endBlk));
         nowDefining.functionBody.add(condBlk);
-        variable counterValue2 = getNewVariable(new IRSimpleType(32));
-        stepBlk.addStatements(new load(counterValue2, counter));
-        variable newCounterValue = getNewVariable(new IRSimpleType(32));
-        stepBlk.addStatements(new binary(newCounterValue, 32, counterValue2, new constantValue(1, new IRSimpleType(32)), binary.opType.add));
-        stepBlk.addStatements(new store(newCounterValue, (IRPointerType) counter.type, counter));
-        stepBlk.addStatements(new unconditionalBr(condBlk));
+        IRVariable counterValue2 = getNewVariable(new IRSimpleType(32));
+        stepBlk.addStatements(new IRLoad(counterValue2, counter));
+        IRVariable newCounterValue = getNewVariable(new IRSimpleType(32));
+        stepBlk.addStatements(new IRBinary(newCounterValue, 32, counterValue2, new IRConstantValue(1, new IRSimpleType(32)), IRBinary.opType.add));
+        stepBlk.addStatements(new IRStore(newCounterValue, (IRPointerType) counter.type, counter));
+        stepBlk.addStatements(new IRUnconditionalBr(condBlk));
         nowDefining.functionBody.add(stepBlk);
         nowBuildingBlock = loopBlk;
-        variable counterValue3 = getNewVariable(new IRSimpleType(32));
-        nowBuildingBlock.addStatements(new load(counterValue3, counter));
-        variable elementPtr = getNewVariable(new IRPointerType(elementType));
-        getElementPtr getArrayElementPtr = new getElementPtr(elementType, ans, elementPtr);
+        IRVariable counterValue3 = getNewVariable(new IRSimpleType(32));
+        nowBuildingBlock.addStatements(new IRLoad(counterValue3, counter));
+        IRVariable elementPtr = getNewVariable(new IRPointerType(elementType));
+        IRGetElementPtr getArrayElementPtr = new IRGetElementPtr(elementType, ans, elementPtr);
         getArrayElementPtr.addIdx(counterValue3);
         nowBuildingBlock.addStatements(getArrayElementPtr);
         if (elementType instanceof IRPointerType) {
             if (((IRPointerType) elementType).targetType instanceof IRBasicClassType) {
                 //为类分配内存，调用构造函数
-                variable element = getNewVariable(elementType);
+                IRVariable element = getNewVariable(elementType);
                 String className = ((IRBasicClassType) ((IRPointerType) elementType).targetType).className;
-                nowBuildingBlock.addStatements(new alloca(element, new IRBasicClassType(className)));
-                call construct = new call(className + "." + className, new IRVoidType());
+                nowBuildingBlock.addStatements(new IRAlloca(element, new IRBasicClassType(className)));
+                IRCall construct = new IRCall(className + "." + className, new IRVoidType());
                 construct.parameters.add(element);
                 nowBuildingBlock.addStatements(construct);
-                nowBuildingBlock.addStatements(new store(element, (IRPointerType) elementPtr.type, elementPtr));
+                nowBuildingBlock.addStatements(new IRStore(element, (IRPointerType) elementPtr.type, elementPtr));
             } else if (((IRPointerType) elementType).targetType instanceof IRBasicArrayType) {
                 //构造下一层
                 if (in.size() > 1) {
@@ -619,15 +608,15 @@ public class IRBuilder implements ASTVisitor {
                     for (int i = 1; i < in.size(); ++i) {
                         newIn.add(in.get(i));
                     }
-                    variable element = (variable) newArray(newIn, ((IRBasicArrayType) ((IRPointerType) elementType).targetType).elementType, dimension - 1);
-                    nowBuildingBlock.addStatements(new store(element, (IRPointerType) elementPtr.type, elementPtr));
+                    IRVariable element = (IRVariable) newArray(newIn, ((IRBasicArrayType) ((IRPointerType) elementType).targetType).elementType, dimension - 1);
+                    nowBuildingBlock.addStatements(new IRStore(element, (IRPointerType) elementPtr.type, elementPtr));
                 } else {
                     //如果是最后一层，则把所有元素都赋值为null
-                    nowBuildingBlock.addStatements(new store(new IRNull(), (IRPointerType) elementPtr.type, elementPtr));
+                    nowBuildingBlock.addStatements(new IRStore(new IRNull(), (IRPointerType) elementPtr.type, elementPtr));
                 }
             }
         }
-        nowBuildingBlock.addStatements(new unconditionalBr(stepBlk));
+        nowBuildingBlock.addStatements(new IRUnconditionalBr(stepBlk));
         nowDefining.functionBody.add(loopBlk);
         nowDefining.functionBody.add(endBlk);
         nowBuildingBlock = endBlk;
@@ -639,12 +628,12 @@ public class IRBuilder implements ASTVisitor {
     }
 
     public void visit(NewExprNode it) {
-        variable v = getNewVariable(new IRPointerType(new IRBasicClassType(it.type.type_name)));
-        call mallocFunc = new call("_malloc", new IRPointerType(null));
+        IRVariable v = getNewVariable(new IRPointerType(new IRBasicClassType(it.type.type_name)));
+        IRCall mallocFunc = new IRCall("_malloc", new IRPointerType(null));
         mallocFunc.result = v;
-        mallocFunc.parameters.add(new constantValue(types.get(it.type.type_name).elements.size() * 4L, new IRSimpleType(32)));
+        mallocFunc.parameters.add(new IRConstantValue(types.get(it.type.type_name).elements.size() * 4L, new IRSimpleType(32)));
         nowBuildingBlock.addStatements(mallocFunc);
-        call construct = new call(it.type.type_name + "." + it.type.type_name, new IRVoidType());
+        IRCall construct = new IRCall(it.type.type_name + "." + it.type.type_name, new IRVoidType());
         construct.parameters.add(v);
         nowBuildingBlock.addStatements(construct);//添加构造函数
         it.ent = v;
@@ -655,17 +644,17 @@ public class IRBuilder implements ASTVisitor {
         it.expression.accept(this);
         IRSimpleType t = new IRSimpleType(32);
         IRPointerType p = new IRPointerType(t);
-        variable bef = getNewVariable(t);
-        variable aft = getNewVariable(t);
-        nowBuildingBlock.addStatements(new load(bef, (variable) it.expression.ent));
+        IRVariable bef = getNewVariable(t);
+        IRVariable aft = getNewVariable(t);
+        nowBuildingBlock.addStatements(new IRLoad(bef, (IRVariable) it.expression.ent));
         long add;
         if (it.op == PrefixExprNode.prefixOpType.addadd) {
             add = 1;
         } else {
             add = -1;
         }
-        nowBuildingBlock.addStatements(new binary(aft, 32, bef, new constantValue(add, t), binary.opType.add));
-        nowBuildingBlock.addStatements(new store(aft, p, (variable) it.expression.ent));
+        nowBuildingBlock.addStatements(new IRBinary(aft, 32, bef, new IRConstantValue(add, t), IRBinary.opType.add));
+        nowBuildingBlock.addStatements(new IRStore(aft, p, (IRVariable) it.expression.ent));
         it.ent = it.expression.ent;
     }
 
@@ -675,59 +664,59 @@ public class IRBuilder implements ASTVisitor {
         it.expression.accept(this);
         IRSimpleType t = new IRSimpleType(32);
         IRPointerType p = new IRPointerType(t);
-        variable bef = getNewVariable(t);
-        variable aft = getNewVariable(t);
-        nowBuildingBlock.addStatements(new load(bef, (variable) it.expression.ent));
+        IRVariable bef = getNewVariable(t);
+        IRVariable aft = getNewVariable(t);
+        nowBuildingBlock.addStatements(new IRLoad(bef, (IRVariable) it.expression.ent));
         long add;
         if (it.op == SuffixExprNode.suffixOpType.addadd) {
             add = 1;
         } else {
             add = -1;
         }
-        nowBuildingBlock.addStatements(new binary(aft, 32, bef, new constantValue(add, t), binary.opType.add));
-        nowBuildingBlock.addStatements(new store(aft, p, (variable) it.expression.ent));
+        nowBuildingBlock.addStatements(new IRBinary(aft, 32, bef, new IRConstantValue(add, t), IRBinary.opType.add));
+        nowBuildingBlock.addStatements(new IRStore(aft, p, (IRVariable) it.expression.ent));
         it.ent = bef;
     }
 
     public void visit(TernaryExprNode it) {
         it.judgeExpr.accept(this);
-        entity cond = it.judgeExpr.ent;
+        IREntity cond = it.judgeExpr.ent;
         if (it.judgeExpr.isAssignable()) {
-            variable v = getNewVariable(new IRSimpleType(1));
-            nowBuildingBlock.addStatements(new load(v, (variable) cond));
+            IRVariable v = getNewVariable(new IRSimpleType(1));
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) cond));
             cond = v;
         }
-        block itBlk = nowBuildingBlock;
-        block trueBlk = getNewBlock();
-        block falseBlk = getNewBlock();
-        block endBlk = getNewBlock();
-        itBlk.addStatements(new conditionalBr(cond, trueBlk, falseBlk));
+        IRBlock itBlk = nowBuildingBlock;
+        IRBlock trueBlk = getNewBlock();
+        IRBlock falseBlk = getNewBlock();
+        IRBlock endBlk = getNewBlock();
+        itBlk.addStatements(new IRConditionalBr(cond, trueBlk, falseBlk));
         nowBuildingBlock = trueBlk;
         it.trueExpr.accept(this);
-        entity t = it.trueExpr.ent;
+        IREntity t = it.trueExpr.ent;
         if (it.trueExpr.isAssignable()) {
-            variable v = getNewVariable(((IRPointerType) t.getType()).targetType);
-            nowBuildingBlock.addStatements(new load(v, (variable) t));
+            IRVariable v = getNewVariable(((IRPointerType) t.getType()).targetType);
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) t));
             t = v;
         }
-        nowBuildingBlock.addStatements(new unconditionalBr(endBlk));
+        nowBuildingBlock.addStatements(new IRUnconditionalBr(endBlk));
         nowDefining.functionBody.add(trueBlk);
-        block trueBlkEndBlk = nowBuildingBlock;
+        IRBlock trueBlkEndBlk = nowBuildingBlock;
         nowBuildingBlock = falseBlk;
         it.falseExpr.accept(this);
-        entity f = it.falseExpr.ent;
+        IREntity f = it.falseExpr.ent;
         if (it.falseExpr.isAssignable()) {
-            variable v = getNewVariable(((IRPointerType) f.getType()).targetType);
-            nowBuildingBlock.addStatements(new load(v, (variable) f));
+            IRVariable v = getNewVariable(((IRPointerType) f.getType()).targetType);
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) f));
             f = v;
         }
-        nowBuildingBlock.addStatements(new unconditionalBr(endBlk));
+        nowBuildingBlock.addStatements(new IRUnconditionalBr(endBlk));
         nowDefining.functionBody.add(falseBlk);
-        block falseBlkEndBlk = nowBuildingBlock;
+        IRBlock falseBlkEndBlk = nowBuildingBlock;
         nowBuildingBlock = endBlk;
         nowDefining.functionBody.add(endBlk);
-        variable ans = getNewVariable(t.getType());
-        phi phiInst = new phi(ans, ans.getType());
+        IRVariable ans = getNewVariable(t.getType());
+        IRPhi phiInst = new IRPhi(ans, ans.getType());
         phiInst.valLabel.put(trueBlkEndBlk, t);
         phiInst.valLabel.put(falseBlkEndBlk, f);
         endBlk.addStatements(phiInst);
@@ -738,29 +727,29 @@ public class IRBuilder implements ASTVisitor {
         it.expression.accept(this);
         if (it.expression.type.isBool()) {
             //必然是not
-            entity expr = it.expression.ent;
+            IREntity expr = it.expression.ent;
             if (it.expression.isAssignable()) {
-                variable v = getNewVariable(new IRSimpleType(1));
-                nowBuildingBlock.addStatements(new load(v, (variable) expr));
+                IRVariable v = getNewVariable(new IRSimpleType(1));
+                nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) expr));
                 expr = v;
             }
-            variable ans = getNewVariable(new IRSimpleType(1));
-            nowBuildingBlock.addStatements(new binary(ans, 1, expr, new constantBool(true), binary.opType.xor));
+            IRVariable ans = getNewVariable(new IRSimpleType(1));
+            nowBuildingBlock.addStatements(new IRBinary(ans, 1, expr, new IRConstantBool(true), IRBinary.opType.xor));
             it.ent = ans;
         } else {
-            entity expr = it.expression.ent;
+            IREntity expr = it.expression.ent;
             if (it.expression.isAssignable()) {
-                variable v = getNewVariable(new IRSimpleType(32));
-                nowBuildingBlock.addStatements(new load(v, (variable) expr));
+                IRVariable v = getNewVariable(new IRSimpleType(32));
+                nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) expr));
                 expr = v;
             }
             if (it.op == UnaryExprNode.unaryOpType.tilde) {
-                variable ans = getNewVariable(new IRSimpleType(32));
-                nowBuildingBlock.addStatements(new binary(ans, 32, expr, new constantValue(-1, new IRSimpleType(32)), binary.opType.xor));
+                IRVariable ans = getNewVariable(new IRSimpleType(32));
+                nowBuildingBlock.addStatements(new IRBinary(ans, 32, expr, new IRConstantValue(-1, new IRSimpleType(32)), IRBinary.opType.xor));
                 it.ent = ans;
             } else if (it.op == UnaryExprNode.unaryOpType.minus) {
-                variable ans = getNewVariable(new IRSimpleType(32));
-                nowBuildingBlock.addStatements(new binary(ans, 32, new constantValue(0, new IRSimpleType(32)), expr, binary.opType.sub));
+                IRVariable ans = getNewVariable(new IRSimpleType(32));
+                nowBuildingBlock.addStatements(new IRBinary(ans, 32, new IRConstantValue(0, new IRSimpleType(32)), expr, IRBinary.opType.sub));
                 it.ent = ans;
             } else {
                 it.ent = expr;
@@ -775,11 +764,11 @@ public class IRBuilder implements ASTVisitor {
     }
 
     public void visit(BreakStmtNode it) {
-        nowBuildingBlock.addStatements(new unconditionalBr(nowForEndBlock));
+        nowBuildingBlock.addStatements(new IRUnconditionalBr(nowForEndBlock));
     }
 
     public void visit(ContinueStmtNode it) {
-        nowBuildingBlock.addStatements(new unconditionalBr(nowForStepBlock));
+        nowBuildingBlock.addStatements(new IRUnconditionalBr(nowForStepBlock));
     }
 
     public void visit(DefStmtNode it) {
@@ -792,39 +781,39 @@ public class IRBuilder implements ASTVisitor {
     public void visit(ForStmtNode it) {
         nowScope = new IRScope(nowScope);
         it.init.accept(this);
-        block itBlk = nowBuildingBlock;
-        block condBlk = getNewBlock();
-        block loopBlk = getNewBlock();
-        block stepBlk = getNewBlock();
-        block endBlk = getNewBlock();
-        itBlk.addStatements(new unconditionalBr(condBlk));
+        IRBlock itBlk = nowBuildingBlock;
+        IRBlock condBlk = getNewBlock();
+        IRBlock loopBlk = getNewBlock();
+        IRBlock stepBlk = getNewBlock();
+        IRBlock endBlk = getNewBlock();
+        itBlk.addStatements(new IRUnconditionalBr(condBlk));
         nowBuildingBlock = condBlk;
         if (it.condition != null) {
             it.condition.accept(this);
-            entity condition = it.condition.ent;
+            IREntity condition = it.condition.ent;
             if (it.condition.isAssignable()) {
-                variable v = getNewVariable(new IRSimpleType(32));
-                nowBuildingBlock.addStatements(new load(v, (variable) condition));
+                IRVariable v = getNewVariable(new IRSimpleType(32));
+                nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) condition));
                 condition = v;
             }
-            nowBuildingBlock.addStatements(new conditionalBr(condition, loopBlk, endBlk));
+            nowBuildingBlock.addStatements(new IRConditionalBr(condition, loopBlk, endBlk));
         } else {
-            nowBuildingBlock.addStatements(new unconditionalBr(loopBlk));
+            nowBuildingBlock.addStatements(new IRUnconditionalBr(loopBlk));
         }
         nowDefining.functionBody.add(condBlk);
         nowBuildingBlock = stepBlk;
         if (it.step != null) {
             it.step.accept(this);
         }
-        nowBuildingBlock.addStatements(new unconditionalBr(condBlk));//存在换nowBuildingBlock的情况
+        nowBuildingBlock.addStatements(new IRUnconditionalBr(condBlk));//存在换nowBuildingBlock的情况
         nowDefining.functionBody.add(stepBlk);
         nowBuildingBlock = loopBlk;
-        block formerStepBlk = nowForStepBlock;
-        block formerEndBlk = nowForEndBlock;
+        IRBlock formerStepBlk = nowForStepBlock;
+        IRBlock formerEndBlk = nowForEndBlock;
         nowForStepBlock = stepBlk;
         nowForEndBlock = endBlk;
         it.thenStmt.accept(this);
-        nowBuildingBlock.addStatements(new unconditionalBr(stepBlk));
+        nowBuildingBlock.addStatements(new IRUnconditionalBr(stepBlk));
         nowDefining.functionBody.add(loopBlk);
         nowForEndBlock = formerEndBlk;
         nowForStepBlock = formerStepBlk;
@@ -835,37 +824,37 @@ public class IRBuilder implements ASTVisitor {
 
     public void visit(IfStmtNode it) {
         it.condition.accept(this);
-        entity condition = it.condition.ent;
+        IREntity condition = it.condition.ent;
         if (it.condition.isAssignable()) {
-            variable v = getNewVariable(new IRSimpleType(1));
-            nowBuildingBlock.addStatements(new load(v, (variable) condition));
+            IRVariable v = getNewVariable(new IRSimpleType(1));
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) condition));
             condition = v;
         }
         if (it.elseStmt == null) {
-            block itBlk = nowBuildingBlock;
-            block thenBlk = getNewBlock();
-            block endBlk = getNewBlock();
-            itBlk.addStatements(new conditionalBr(condition, thenBlk, endBlk));
+            IRBlock itBlk = nowBuildingBlock;
+            IRBlock thenBlk = getNewBlock();
+            IRBlock endBlk = getNewBlock();
+            itBlk.addStatements(new IRConditionalBr(condition, thenBlk, endBlk));
             nowBuildingBlock = thenBlk;
             nowDefining.functionBody.add(thenBlk);
             it.thenStmt.accept(this);
-            nowBuildingBlock.addStatements(new unconditionalBr(endBlk));
+            nowBuildingBlock.addStatements(new IRUnconditionalBr(endBlk));
             nowBuildingBlock = endBlk;
             nowDefining.functionBody.add(endBlk);
         } else {
-            block itBlk = nowBuildingBlock;
-            block thenBlk = getNewBlock();
-            block elseBlk = getNewBlock();
-            block endBlk = getNewBlock();
-            itBlk.addStatements(new conditionalBr(condition, thenBlk, elseBlk));
+            IRBlock itBlk = nowBuildingBlock;
+            IRBlock thenBlk = getNewBlock();
+            IRBlock elseBlk = getNewBlock();
+            IRBlock endBlk = getNewBlock();
+            itBlk.addStatements(new IRConditionalBr(condition, thenBlk, elseBlk));
             nowBuildingBlock = thenBlk;
             nowDefining.functionBody.add(thenBlk);
             it.thenStmt.accept(this);
-            nowBuildingBlock.addStatements(new unconditionalBr(endBlk));
+            nowBuildingBlock.addStatements(new IRUnconditionalBr(endBlk));
             nowBuildingBlock = elseBlk;
             nowDefining.functionBody.add(elseBlk);
             it.elseStmt.accept(this);
-            nowBuildingBlock.addStatements(new unconditionalBr(endBlk));
+            nowBuildingBlock.addStatements(new IRUnconditionalBr(endBlk));
             nowBuildingBlock = endBlk;
             nowDefining.functionBody.add(endBlk);
         }
@@ -880,40 +869,40 @@ public class IRBuilder implements ASTVisitor {
         if (it.return_expression != null) {
             it.return_expression.accept(this);
             if (it.return_expression.isAssignable())
-                this.nowBuildingBlock.addStatements(new ret(getPointerTarget((variable) it.return_expression.ent)));
+                this.nowBuildingBlock.addStatements(new IRRet(getPointerTarget((IRVariable) it.return_expression.ent)));
             else {
-                this.nowBuildingBlock.addStatements(new ret(it.return_expression.ent));
+                this.nowBuildingBlock.addStatements(new IRRet(it.return_expression.ent));
             }
         } else {
-            this.nowBuildingBlock.addStatements(new ret(new voidEntity()));
+            this.nowBuildingBlock.addStatements(new IRRet(new IRVoidEntity()));
         }
 
     }
 
     public void visit(WhileStmtNode it) {
-        block itBlk = nowBuildingBlock;
-        block conditionBlk = getNewBlock();
-        block loopBlk = getNewBlock();
-        block endBlk = getNewBlock();
-        itBlk.addStatements(new unconditionalBr(conditionBlk));
+        IRBlock itBlk = nowBuildingBlock;
+        IRBlock conditionBlk = getNewBlock();
+        IRBlock loopBlk = getNewBlock();
+        IRBlock endBlk = getNewBlock();
+        itBlk.addStatements(new IRUnconditionalBr(conditionBlk));
         nowBuildingBlock = conditionBlk;
         nowDefining.functionBody.add(conditionBlk);
         it.condition.accept(this);
-        entity condition = it.condition.ent;
+        IREntity condition = it.condition.ent;
         if (it.condition.isAssignable()) {
-            variable v = getNewVariable(new IRSimpleType(32));
-            nowBuildingBlock.addStatements(new load(v, (variable) condition));
+            IRVariable v = getNewVariable(new IRSimpleType(32));
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) condition));
             condition = v;
         }
-        nowBuildingBlock.addStatements(new conditionalBr(condition, loopBlk, endBlk));
+        nowBuildingBlock.addStatements(new IRConditionalBr(condition, loopBlk, endBlk));
         nowBuildingBlock = loopBlk;
-        block formerStepBlk = nowForStepBlock;
-        block formerEndBlk = nowForEndBlock;
+        IRBlock formerStepBlk = nowForStepBlock;
+        IRBlock formerEndBlk = nowForEndBlock;
         nowForStepBlock = conditionBlk;
         nowForEndBlock = endBlk;
         nowDefining.functionBody.add(loopBlk);
         it.thenStmt.accept(this);
-        nowBuildingBlock.addStatements(new unconditionalBr(conditionBlk));
+        nowBuildingBlock.addStatements(new IRUnconditionalBr(conditionBlk));
         nowForEndBlock = formerEndBlk;
         nowForStepBlock = formerStepBlk;
         nowBuildingBlock = endBlk;
@@ -924,7 +913,7 @@ public class IRBuilder implements ASTVisitor {
 
         it.defs.forEach(t -> {
             if (t instanceof ClassDefNode) {
-                ClassDef c = new ClassDef(((ClassDefNode) t).classname, MxGlobalScope.types.get(((ClassDefNode) t).classname));
+                IRClassDef c = new IRClassDef(((ClassDefNode) t).classname, MxGlobalScope.types.get(((ClassDefNode) t).classname));
                 types.put(((ClassDefNode) t).classname, c);
                 root.definitions.add(c);
             }
@@ -934,7 +923,7 @@ public class IRBuilder implements ASTVisitor {
             t.accept(this);
             if (t instanceof FuncDefNode) root.definitions.add(nowDefining);
         });
-        initGlobal.functionBody.add(new ret(new voidEntity()));
+        initGlobal.functionBody.add(new IRRet(new IRVoidEntity()));
     }
 
     public void visit(VarExprNode it) {
@@ -943,10 +932,10 @@ public class IRBuilder implements ASTVisitor {
             //转成this.
             int pos = nowDefiningClass.index.get(it.name);
             IRType targetType = nowDefiningClass.elements.get(pos);
-            variable ans = getNewVariable(new IRPointerType(targetType));
-            getElementPtr gep = new getElementPtr(new IRBasicClassType(nowDefiningClass.name), nowThis, ans);
-            gep.idx.add(new constantValue(0, new IRSimpleType(32)));//取第0个class
-            gep.idx.add(new constantValue(pos, new IRSimpleType(32)));//取class的第pos个元素
+            IRVariable ans = getNewVariable(new IRPointerType(targetType));
+            IRGetElementPtr gep = new IRGetElementPtr(new IRBasicClassType(nowDefiningClass.name), nowThis, ans);
+            gep.idx.add(new IRConstantValue(0, new IRSimpleType(32)));//取第0个class
+            gep.idx.add(new IRConstantValue(pos, new IRSimpleType(32)));//取class的第pos个元素
             nowBuildingBlock.addStatements(gep);
             it.ent = ans;
         } else {
@@ -957,19 +946,19 @@ public class IRBuilder implements ASTVisitor {
 
     public void visit(StringLiteralNode it) {
         //不再搞一个StringType了，直接认为是个指向i8的指针
-        variable v = getNewConstString();
+        IRVariable v = getNewConstString();
         //在全局中定义字符串变量
-        root.definitions.add(new stringConstantDef(v, it.value.length() + 1, it.value));
+        root.definitions.add(new IRStringConstantDef(v, it.value.length() + 1, it.value));
         it.ent = v;
     }
 
     public void visit(IntLiteralNode it) {
         IRSimpleType t = new IRSimpleType(32);
-        it.ent = new constantValue(it.value, t);
+        it.ent = new IRConstantValue(it.value, t);
     }
 
     public void visit(BoolLiteralNode it) {
-        it.ent = new constantBool(it.value);
+        it.ent = new IRConstantBool(it.value);
     }
 
     public void visit(ThisNode it) {
@@ -983,43 +972,43 @@ public class IRBuilder implements ASTVisitor {
     public void visit(ClassMethodCallExprNode it) {
 
         it.classExpr.accept(this);
-        entity family = it.classExpr.ent;
+        IREntity family = it.classExpr.ent;
         if (it.classExpr.isAssignable()) {
-            variable v = getNewVariable(((IRPointerType) family.getType()).targetType);
-            nowBuildingBlock.addStatements(new load(v, (variable) family));
+            IRVariable v = getNewVariable(((IRPointerType) family.getType()).targetType);
+            nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) family));
             family = v;
         }
         it.parameters.forEach(p -> p.accept(this));
         if (it.classExpr.type.dimension > 0) {
             //array.size()
-            variable sizePtr = getNewVariable(new IRPointerType(new IRSimpleType(32)));
-            getElementPtr getArraySizePtr = new getElementPtr(new IRSimpleType(32), (variable) family, sizePtr);
-            getArraySizePtr.addIdx(new constantValue(-1, new IRSimpleType(32)));
+            IRVariable sizePtr = getNewVariable(new IRPointerType(new IRSimpleType(32)));
+            IRGetElementPtr getArraySizePtr = new IRGetElementPtr(new IRSimpleType(32), (IRVariable) family, sizePtr);
+            getArraySizePtr.addIdx(new IRConstantValue(-1, new IRSimpleType(32)));
             nowBuildingBlock.addStatements(getArraySizePtr);
-            variable size = getNewVariable(new IRSimpleType(32));
-            nowBuildingBlock.addStatements(new load(size, sizePtr));
+            IRVariable size = getNewVariable(new IRSimpleType(32));
+            nowBuildingBlock.addStatements(new IRLoad(size, sizePtr));
             it.ent = size;
             return;
         }
-        call callFunc;
+        IRCall callFunc;
 
         if (it.classExpr.type.isString()) {
-            callFunc = new call("_string." + it.methodName, TransTypeToIRType(it.type));
+            callFunc = new IRCall("_string." + it.methodName, TransTypeToIRType(it.type));
         } else {
-            callFunc = new call(it.classExpr.type.type_name + "." + it.methodName, TransTypeToIRType(it.type));
+            callFunc = new IRCall(it.classExpr.type.type_name + "." + it.methodName, TransTypeToIRType(it.type));
         }
         callFunc.parameters.add(family);
         it.parameters.forEach(p -> {
-            entity pV = p.ent;
+            IREntity pV = p.ent;
             if (p.isAssignable()) {
-                variable v = getNewVariable(((IRPointerType) p.ent.getType()).targetType);
-                nowBuildingBlock.addStatements(new load(v, (variable) pV));
+                IRVariable v = getNewVariable(((IRPointerType) p.ent.getType()).targetType);
+                nowBuildingBlock.addStatements(new IRLoad(v, (IRVariable) pV));
                 pV = v;
             }
             callFunc.parameters.add(pV);
         });
         if (!(callFunc.returnType instanceof IRVoidType)) {
-            variable rt = getNewVariable(callFunc.returnType);
+            IRVariable rt = getNewVariable(callFunc.returnType);
             callFunc.result = rt;
             it.ent = rt;
         }

@@ -8,7 +8,6 @@ import Utils.*;
 import Utils.error.SemanticError;
 
 import java.util.ArrayList;
-import java.util.Objects;
 
 public class SemanticChecker implements ASTVisitor {
     public GlobalScope globalScope;
@@ -54,30 +53,30 @@ public class SemanticChecker implements ASTVisitor {
                 throw new SemanticError("Constructor must be in Class scope", it.pos);
             }
             String className = nowScope.findClassName();
-            if (!className.equals(it.func_name)) {
+            if (!className.equals(it.funcName)) {
                 throw new SemanticError("Wrong Constructor", it.pos);
             }
-        } else checkType(it.return_type.type_name);
-        nowScope.correctReturnType = it.return_type; //todo 这是后加的，下面或许可以优化
+        } else checkType(it.returnType.type_name);
+        nowScope.correctReturnType = it.returnType; //todo 这是后加的，下面或许可以优化
         //把参数加进作用域里
-        for (int i = 0; i < it.parameter_list.size(); ++i) {
+        for (int i = 0; i < it.parameterList.size(); ++i) {
             nowScope.defineVariable(it.getParameterName(i), it.getParameterType(i), it.pos);
         }
         for (StmtNode nowNode : it.statements) {
             nowNode.accept(this);
         }
-        if (it.isConstructor || it.return_type.isVoid()) {
+        if (it.isConstructor || it.returnType.isVoid()) {
             if (nowScope.returnType != null) throw new SemanticError("Return type mismatch", it.pos);
         } else if (nowScope.returnType == null) {
-            if (!it.func_name.equals("main")) throw new SemanticError("Missing return type", it.pos);
-        } else if (!nowScope.returnType.equals(it.return_type)) throw new SemanticError("Return type mismatch", it.pos);
+            if (!it.funcName.equals("main")) throw new SemanticError("Missing return type", it.pos);
+        } else if (!nowScope.returnType.equals(it.returnType)) throw new SemanticError("Return type mismatch", it.pos);
         nowScope = nowScope.parentScope();
     }
 
     public void visit(VarDefNode it) {
         //检查类型是否合理，如果不是类成员的定义，则将变量添加进当前作用域中，检查变量的重复定义已在Scope中完成,对变量初始化类型进行检查。
 
-        for (int i = 0; i < it.define_list.size(); ++i) {
+        for (int i = 0; i < it.defineList.size(); ++i) {
             if (it.getDefineListType(i).isVoid()) {
                 throw new SemanticError("Variable type cannot be void", it.pos);
             }
