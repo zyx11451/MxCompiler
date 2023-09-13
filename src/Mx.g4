@@ -33,7 +33,7 @@ expression
     | array=expression '[' index=expression ']'                           #arrayElementExpr
     | Identifier '('(expression ',')* expression?')'                      #functionCallExpr
     | expression '.' Identifier                                           #memberExpr
-    | className=expression '.' Identifier '('(expression ',')* expression?')'       #classMethodCallExpr
+    | className=expression '.' methodName=(Identifier|Main) '('(expression ',')* expression?')'       #classMethodCallExpr
     | <assoc=right> op=('--'|'++') expression                             #prefixExpr
     | <assoc=right> op=('-'|'+') expression                               #unaryExpr
     | <assoc=right> op=('!'|'~') expression                               #unaryExpr

@@ -240,8 +240,7 @@ public class InstSelector implements IRVisitor {
         }
         nowBuildingBlock.push_back(new ASMCall(it.functionName));
         if (it.result != null) {
-            VirReg r = getNewVirReg();
-            entMap.put(it.result, r);
+            Register r = getReg(it.result);
             nowBuildingBlock.push_back(new ASMMv(r, new PhyReg("a0")));
         }
 

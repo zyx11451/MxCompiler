@@ -301,7 +301,10 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
     }
     public ASTNode visitClassMethodCallExpr(MxParser.ClassMethodCallExprContext ctx){
         ExprNode classExpr = (ExprNode) visit(ctx.className);
-        ClassMethodCallExprNode methodCall = new ClassMethodCallExprNode(classExpr,ctx.Identifier().toString(), new position(ctx));
+        String methodName;
+        if(ctx.Main()!=null) methodName="main";
+        else methodName=ctx.Identifier().toString();
+        ClassMethodCallExprNode methodCall = new ClassMethodCallExprNode(classExpr,methodName, new position(ctx));
         for(int i=1;i<ctx.expression().size();++i){
             methodCall.parameters.add((ExprNode) visit(ctx.expression(i)));
         }

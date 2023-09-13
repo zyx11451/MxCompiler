@@ -76,8 +76,8 @@ public class SymbolCollector implements ASTVisitor {
         for (DefNode defs : it.elements) {
             if (defs instanceof FuncDefNode funcDefNode) {
                 funcDefNode.accept(this);
-                if (Objects.equals(nowDefiningFunc.functionName, "main"))
-                    throw new SemanticError("Main Function cannot be defined in class", funcDefNode.pos);
+                /*if (Objects.equals(nowDefiningFunc.functionName, "main"))
+                    throw new SemanticError("Main Function cannot be defined in class", funcDefNode.pos);*/
                 nowDefiningClass.addFunction(nowDefiningFunc.functionName, nowDefiningFunc);
                 nowDefiningFunc = null;
             } else if (defs instanceof VarDefNode varDefNode) {

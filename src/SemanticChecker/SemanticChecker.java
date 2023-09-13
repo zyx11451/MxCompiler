@@ -57,7 +57,7 @@ public class SemanticChecker implements ASTVisitor {
                 throw new SemanticError("Wrong Constructor", it.pos);
             }
         } else checkType(it.returnType.type_name);
-        nowScope.correctReturnType = it.returnType; //todo 这是后加的，下面或许可以优化
+        nowScope.correctReturnType = it.returnType;
         //把参数加进作用域里
         for (int i = 0; i < it.parameterList.size(); ++i) {
             nowScope.defineVariable(it.getParameterName(i), it.getParameterType(i), it.pos);
