@@ -21,6 +21,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.io.*;
 
 public class Main {
+    //todo AST有问题
     public static void main(String[] args) throws Exception{
         boolean online=true;
         InputStream input;
