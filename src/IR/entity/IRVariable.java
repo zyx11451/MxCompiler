@@ -3,8 +3,10 @@ package IR.entity;
 import IR.IRTypes.IRType;
 
 public class IRVariable extends IREntity {
-    public IRType type;//变量只能是ptr类型  吗？
+    public IRType type;
     public String name;
+    public int val=0;
+    public boolean isConstant=false;
     public IRVariable(IRType type, String name){
         this.type=type;
         this.name=name;
@@ -17,5 +19,11 @@ public class IRVariable extends IREntity {
     };
     public boolean isGlobal(){
         return name.charAt(0)=='@';
+    }
+    public boolean isConstant(){
+        return isConstant;
+    }
+    public int getConstant(){
+        return val;
     }
 }

@@ -10,4 +10,10 @@ public class IRNull extends IREntity {
     public String toString(){
         return "null";
     };
+    public boolean isConstant(){
+        return true;
+    }
+    public int getConstant(){
+        return 0;
+    }
 }

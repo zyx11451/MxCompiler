@@ -19,4 +19,11 @@ public class IRConstantBool extends IREntity {
         if(value) return "true";
         else return "false";
     };
+    public boolean isConstant(){
+        return true;
+    }
+    public int getConstant(){
+        if(value) return 1;
+        else return 0;
+    }
 }

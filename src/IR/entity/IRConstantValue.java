@@ -17,4 +17,10 @@ public class IRConstantValue extends IREntity {
     public String toString(){
         return Integer.toString(value);
     };
+    public boolean isConstant(){
+        return true;
+    }
+    public int getConstant(){
+        return value;
+    }
 }

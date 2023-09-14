@@ -7,6 +7,7 @@ import AST.ASTBuilder;
 import AST.DefNodes.RootNode;
 import IR.IRBuilder;
 import IR.IRDefs.IRRoot;
+import OPT.ConstantOptimize;
 import Parser.MxLexer;
 import Parser.MxParser;
 import SemanticChecker.SemanticChecker;
@@ -23,7 +24,7 @@ import java.io.*;
 public class Main {
     //todo AST有问题
     public static void main(String[] args) throws Exception{
-        boolean online=true;
+        boolean online=false;
         InputStream input;
         String name = "test.mx";
         if(online) input=System.in;
@@ -45,6 +46,7 @@ public class Main {
             new SemanticChecker(gScope).visit(ASTRoot);
             IRRoot irRoot=new IRRoot();
             new IRBuilder(irRoot,gScope).visit(ASTRoot);
+            new ConstantOptimize().visit(irRoot);
             ASMModule asmModule=new ASMModule();
             new InstSelector(asmModule).visit(irRoot);
             if(online) new RegAllocator().visit(asmModule);
