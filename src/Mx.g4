@@ -2,9 +2,9 @@ grammar Mx;
 
 program: defination*  EOF;
 
-
+singleVarDef :varname=Identifier ('=' expression)? ;
 varDef
-    : type (varname=Identifier ('=' expression)?',')*  varname=Identifier ('=' expression)?';'
+    : type (singleVarDef',')*  singleVarDef';'
     ;
 classDef : Class classname=Identifier '{' (defination)* '}'';'?;
 funcDef: type funcname=Identifier '('parameterList?')''{' (statement)* '}' ';'?#otherFn

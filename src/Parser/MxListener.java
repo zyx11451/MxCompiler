@@ -18,6 +18,16 @@ public interface MxListener extends ParseTreeListener {
 	 */
 	void exitProgram(MxParser.ProgramContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link MxParser#singleVarDef}.
+	 * @param ctx the parse tree
+	 */
+	void enterSingleVarDef(MxParser.SingleVarDefContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link MxParser#singleVarDef}.
+	 * @param ctx the parse tree
+	 */
+	void exitSingleVarDef(MxParser.SingleVarDefContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link MxParser#varDef}.
 	 * @param ctx the parse tree
 	 */
