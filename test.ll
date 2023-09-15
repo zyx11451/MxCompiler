@@ -50,14 +50,14 @@ _b.6:
 br label %_b.7
 
 _b.7:
-%_8 = phi i1[ %_13,%_b.6],[ %_10,%_b.3]
+%_8 = phi i1[ true,%_b.6],[ %_10,%_b.3]
 br i1 %_8,label %_b.8,label %_b.9
 
 _b.8:
 br label %_b.9
 
 _b.9:
-%_7 = phi i1[ %_8,%_b.7],[ %_116,%_b.8]
+%_7 = phi i1[ %_8,%_b.7],[ true,%_b.8]
 br i1 %_7,label %_b.10,label %_b.11
 
 _b.10:

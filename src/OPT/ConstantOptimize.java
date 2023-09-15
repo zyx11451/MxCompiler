@@ -16,8 +16,13 @@ public class ConstantOptimize implements IRVisitor {
     boolean nowInstReplace=false;
     IRUnconditionalBr rpl=null;
     IREntity tryReplace(IREntity tar){
-        if(tar instanceof IRVariable&&tar.isConstant()&&((IRSimpleType) ((IRVariable) tar).type).bits==32){
-            return new IRConstantValue(tar.getConstant(),new IRSimpleType(32));
+
+        if(tar instanceof IRVariable&&tar.isConstant()){
+            if(((IRSimpleType) ((IRVariable) tar).type).bits==32){
+                return new IRConstantValue(tar.getConstant(),new IRSimpleType(32));
+            }else{
+                return tryReplaceBool(tar);
+            }
         }else{
             return tar;
         }
