@@ -10,6 +10,7 @@ import IR.entity.IRVariable;
 import IR.inst.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class ConstantOptimize implements IRVisitor {
     boolean nowInstDel=false;
@@ -54,6 +55,7 @@ public class ConstantOptimize implements IRVisitor {
     }
 
     public void visit(IRAlloca it) {
+
     }
 
     public void visit(IRBinary it) {
@@ -101,7 +103,6 @@ public class ConstantOptimize implements IRVisitor {
             if(nowInstReplace) it.statements.set(i,rpl);
             if(nowInstDel) it.statements.remove(i);
             else ++i;
-
             nowInstDel=false;
             nowInstReplace=false;
         }
@@ -151,6 +152,7 @@ public class ConstantOptimize implements IRVisitor {
     }
 
     public void visit(IRLoad it) {
+
     }
 
     public void visit(IRPhi it) {
@@ -165,6 +167,7 @@ public class ConstantOptimize implements IRVisitor {
 
     public void visit(IRStore it) {
         it.value=tryReplace(it.value);
+
     }
 
     public void visit(IRUnconditionalBr it) {
