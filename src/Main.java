@@ -45,7 +45,7 @@ public class Main {
             new SemanticChecker(gScope).visit(ASTRoot);
             IRRoot irRoot=new IRRoot();
             new IRBuilder(irRoot,gScope).visit(ASTRoot);
-            //new ConstantOptimize().visit(irRoot);
+            new ConstantOptimize().visit(irRoot);
             ASMModule asmModule=new ASMModule();
             new InstSelector(asmModule).visit(irRoot);
             if(online) new RegAllocator().visit(asmModule);
