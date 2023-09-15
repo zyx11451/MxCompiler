@@ -22,9 +22,8 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.io.*;
 
 public class Main {
-    //todo AST有问题
     public static void main(String[] args) throws Exception{
-        boolean online=false;
+        boolean online=true;
         InputStream input;
         String name = "test.mx";
         if(online) input=System.in;
