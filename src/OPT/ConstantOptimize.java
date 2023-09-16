@@ -152,10 +152,12 @@ public class ConstantOptimize implements IRVisitor {
         HashSet<IREntity> haveStored=new HashSet<>();
         for(int i=it.statements.size()-1;i>=0;--i){
             if(it.statements.get(i) instanceof IRStore){
-                if(haveStored.contains(((IRStore) it.statements.get(i)).target)){
-                    it.statements.remove(i);
-                }else{
-                    haveStored.add(((IRStore) it.statements.get(i)).target);
+                if(!((IRStore) it.statements.get(i)).target.isGlobal()){
+                    if(haveStored.contains(((IRStore) it.statements.get(i)).target)){
+                        it.statements.remove(i);
+                    }else{
+                        haveStored.add(((IRStore) it.statements.get(i)).target);
+                    }
                 }
             }
         }

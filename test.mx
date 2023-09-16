@@ -11,51 +11,42 @@ Output:
 
 === end ===
 ExitCode: 0
-RunTimeLimit: 2000000
+RunTimeLimit: 9999
 OutputLengthLimit: 10000
 CompileTimeLimit: 15
 */
 
-int rng_seed = 19260817;
+int n;
 
-int unsigned_shl(int x, int k) {
-    return x << k;
+int test() {
+    int i, j = n, k;
+    for (i = 0; i < j; i++) {
+        int t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16,t17,t18,t19,t20,t21,t22,t23,t24,t25,t26,t27,t28,t29,t30,t31,t32,t33,t34,t35,t36,t37,t38,t39,t40,t41,t42,t43,t44,t45,t46,t47,t48,t49;
+        t0 = i + 1;
+        t1 = t0; t2 = t1; t3 = t2; t4 = t3; t5 = t4; t6 = t5; t7 = t6; t8 = t7; t9 = t8; t10 = t9; t11 = t10; t12 = t11; t13 = t12; t14 = t13; t15 = t14; t16 = t15; t17 = t16; t18 = t17; t19 = t18; t20 = t19; t21 = t20; t22 = t21; t23 = t22; t24 = t23; t25 = t24; t26 = t25; t27 = t26; t28 = t27; t29 = t28; t30 = t29; t31 = t30; t32 = t31; t33 = t32; t34 = t33; t35 = t34; t36 = t35; t37 = t36; t38 = t37; t39 = t38; t40 = t39; t41 = t40; t42 = t41; t43 = t42; t44 = t43; t45 = t44; t46 = t45; t47 = t46; t48 = t47; t49 = t48;
+        t1 = t0; t2 = t1; t3 = t2; t4 = t3; t5 = t4; t6 = t5; t7 = t6; t8 = t7; t9 = t8; t10 = t9; t11 = t10; t12 = t11; t13 = t12; t14 = t13; t15 = t14; t16 = t15; t17 = t16; t18 = t17; t19 = t18; t20 = t19; t21 = t20; t22 = t21; t23 = t22; t24 = t23; t25 = t24; t26 = t25; t27 = t26; t28 = t27; t29 = t28; t30 = t29; t31 = t30; t32 = t31; t33 = t32; t34 = t33; t35 = t34; t36 = t35; t37 = t36; t38 = t37; t39 = t38; t40 = t39; t41 = t40; t42 = t41; t43 = t42; t44 = t43; t45 = t44; t46 = t45; t47 = t46; t48 = t47; t49 = t48;
+        t1 = t0; t2 = t1; t3 = t2; t4 = t3; t5 = t4; t6 = t5; t7 = t6; t8 = t7; t9 = t8; t10 = t9; t11 = t10; t12 = t11; t13 = t12; t14 = t13; t15 = t14; t16 = t15; t17 = t16; t18 = t17; t19 = t18; t20 = t19; t21 = t20; t22 = t21; t23 = t22; t24 = t23; t25 = t24; t26 = t25; t27 = t26; t28 = t27; t29 = t28; t30 = t29; t31 = t30; t32 = t31; t33 = t32; t34 = t33; t35 = t34; t36 = t35; t37 = t36; t38 = t37; t39 = t38; t40 = t39; t41 = t40; t42 = t41; t43 = t42; t44 = t43; t45 = t44; t46 = t45; t47 = t46; t48 = t47; t49 = t48;
+        t1 = t0; t2 = t1; t3 = t2; t4 = t3; t5 = t4; t6 = t5; t7 = t6; t8 = t7; t9 = t8; t10 = t9; t11 = t10; t12 = t11; t13 = t12; t14 = t13; t15 = t14; t16 = t15; t17 = t16; t18 = t17; t19 = t18; t20 = t19; t21 = t20; t22 = t21; t23 = t22; t24 = t23; t25 = t24; t26 = t25; t27 = t26; t28 = t27; t29 = t28; t30 = t29; t31 = t30; t32 = t31; t33 = t32; t34 = t33; t35 = t34; t36 = t35; t37 = t36; t38 = t37; t39 = t38; t40 = t39; t41 = t40; t42 = t41; t43 = t42; t44 = t43; t45 = t44; t46 = t45; t47 = t46; t48 = t47; t49 = t48;
+        t1 = t0; t2 = t1; t3 = t2; t4 = t3; t5 = t4; t6 = t5; t7 = t6; t8 = t7; t9 = t8; t10 = t9; t11 = t10; t12 = t11; t13 = t12; t14 = t13; t15 = t14; t16 = t15; t17 = t16; t18 = t17; t19 = t18; t20 = t19; t21 = t20; t22 = t21; t23 = t22; t24 = t23; t25 = t24; t26 = t25; t27 = t26; t28 = t27; t29 = t28; t30 = t29; t31 = t30; t32 = t31; t33 = t32; t34 = t33; t35 = t34; t36 = t35; t37 = t36; t38 = t37; t39 = t38; t40 = t39; t41 = t40; t42 = t41; t43 = t42; t44 = t43; t45 = t44; t46 = t45; t47 = t46; t48 = t47; t49 = t48;
+        t1 = t0; t2 = t1; t3 = t2; t4 = t3; t5 = t4; t6 = t5; t7 = t6; t8 = t7; t9 = t8; t10 = t9; t11 = t10; t12 = t11; t13 = t12; t14 = t13; t15 = t14; t16 = t15; t17 = t16; t18 = t17; t19 = t18; t20 = t19; t21 = t20; t22 = t21; t23 = t22; t24 = t23; t25 = t24; t26 = t25; t27 = t26; t28 = t27; t29 = t28; t30 = t29; t31 = t30; t32 = t31; t33 = t32; t34 = t33; t35 = t34; t36 = t35; t37 = t36; t38 = t37; t39 = t38; t40 = t39; t41 = t40; t42 = t41; t43 = t42; t44 = t43; t45 = t44; t46 = t45; t47 = t46; t48 = t47; t49 = t48;
+        t1 = t0; t2 = t1; t3 = t2; t4 = t3; t5 = t4; t6 = t5; t7 = t6; t8 = t7; t9 = t8; t10 = t9; t11 = t10; t12 = t11; t13 = t12; t14 = t13; t15 = t14; t16 = t15; t17 = t16; t18 = t17; t19 = t18; t20 = t19; t21 = t20; t22 = t21; t23 = t22; t24 = t23; t25 = t24; t26 = t25; t27 = t26; t28 = t27; t29 = t28; t30 = t29; t31 = t30; t32 = t31; t33 = t32; t34 = t33; t35 = t34; t36 = t35; t37 = t36; t38 = t37; t39 = t38; t40 = t39; t41 = t40; t42 = t41; t43 = t42; t44 = t43; t45 = t44; t46 = t45; t47 = t46; t48 = t47; t49 = t48;
+        t1 = t0; t2 = t1; t3 = t2; t4 = t3; t5 = t4; t6 = t5; t7 = t6; t8 = t7; t9 = t8; t10 = t9; t11 = t10; t12 = t11; t13 = t12; t14 = t13; t15 = t14; t16 = t15; t17 = t16; t18 = t17; t19 = t18; t20 = t19; t21 = t20; t22 = t21; t23 = t22; t24 = t23; t25 = t24; t26 = t25; t27 = t26; t28 = t27; t29 = t28; t30 = t29; t31 = t30; t32 = t31; t33 = t32; t34 = t33; t35 = t34; t36 = t35; t37 = t36; t38 = t37; t39 = t38; t40 = t39; t41 = t40; t42 = t41; t43 = t42; t44 = t43; t45 = t44; t46 = t45; t47 = t46; t48 = t47; t49 = t48;
+        if (t49 != 0) {
+            k = t49;
+        }
+    }
+    return k;
 }
 
-int unsigned_shr(int x, int k) { // k should be (0, 31)
-    int INT_MIN = 1 << 31;
-    if (x >= 0) return x >> k;
-    else return (1 << (31 - k)) | ((x ^ INT_MIN) >> k);
-}
 
-int rng() {
-    int rng_mask = 1073741823;
-    int x = rng_seed;
-    x = x ^ unsigned_shl(x, 13);
-    x = x ^ unsigned_shr(x, 17);
-    x = x ^ unsigned_shl(x, 5);
-    rng_seed = x;
-    return x & rng_mask;
-}
 
 int main() {
-    while (rng_seed % 100 != 0) rng_seed--;
-    int a = rng(), i;
-    int n = (rng() & 127) + 100000;
-    for (i = 0; i < n; ++i) {
-        // dead code begin
-        a = a * 2;
-        a = a + 1;
-        a = a / 2;
-        a = a / 3;
-        a = a / (i + 1);
-        a = a + i;
-        a = a / 100;
-        a = a + i;
-        a = a * a;
-        a = a / 10000;
-        a = a + 1;
-        // dead code end
-    }
-    return 0;
+    n = 100;
+    int ret = test();
+    n = 200;
+    printInt(ret);
+    return ret + test() - 300;
 }
+
+
+
