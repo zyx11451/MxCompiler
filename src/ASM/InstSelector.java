@@ -263,17 +263,21 @@ public class InstSelector implements IRVisitor {
         } else if (it.op == IRCompare.condType.sgt) {
             nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.slt, rd, rs2, rs1));
         } else if (it.op == IRCompare.condType.sge) {
-            nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.slt, rd, rs1, rs2));
-            nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.xori, rd, rd, new Imm(1)));
+            VirReg tmp=getNewVirReg();
+            nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.slt, tmp, rs1, rs2));
+            nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.xori, rd, tmp, new Imm(1)));
         } else if (it.op == IRCompare.condType.sle) {
-            nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.slt, rd, rs2, rs1));
-            nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.xori, rd, rd, new Imm(1)));
+            VirReg tmp=getNewVirReg();
+            nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.slt, tmp, rs2, rs1));
+            nowBuildingBlock.push_back(new ASMBinary(ASMBinary.opType.xori, rd, tmp, new Imm(1)));
         }
     }
 
     public void visit(IRConditionalBr it) {
         nowBuildingBlock.push_back(new ASMBranch(ASMBranch.opType.beqz, getReg(it.cond), blockMap.get(it.ifFalse).labelName));
         nowBuildingBlock.push_back(new ASMJump(blockMap.get(it.ifTrue).labelName));
+        nowBuildingBlock.nextBlockName.add(blockMap.get(it.ifFalse).labelName);
+        nowBuildingBlock.nextBlockName.add(blockMap.get(it.ifTrue).labelName);
     }
 
     public void visit(IRGetElementPtr it) {
@@ -329,6 +333,7 @@ public class InstSelector implements IRVisitor {
             nowBuildingBlock.push_back(new ASMMv(new PhyReg("a0"), getReg(it.returnValue)));
         }
         nowBuildingBlock.push_back(new ASMRet());
+        nowDefiningFunc.endBlocks.add(nowBuildingBlock);
     }
 
     public void visit(IRStore it) {
@@ -347,5 +352,6 @@ public class InstSelector implements IRVisitor {
 
     public void visit(IRUnconditionalBr it) {
         nowBuildingBlock.push_back(new ASMJump(blockMap.get(it.dest).labelName));
+        nowBuildingBlock.nextBlockName.add(blockMap.get(it.dest).labelName);
     }
 }

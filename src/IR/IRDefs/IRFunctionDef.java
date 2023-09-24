@@ -17,6 +17,8 @@ public class IRFunctionDef extends IRDef {
     public IRType resultType;
     public HashMap<IRVariable, HashSet<IRBlock>> activeAlloca = new HashMap<>();//记录alloca的值在哪些块里被用到
 
+    public ArrayList<IRBlock> endBlocks=new ArrayList<>();
+
     public ArrayList<IRVariable> parameters;
     public ArrayList<IRInst> functionBody;
 

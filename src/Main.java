@@ -8,6 +8,7 @@ import AST.DefNodes.RootNode;
 import IR.IRBuilder;
 import IR.IRDefs.IRRoot;
 import OPT.ConstantOptimize;
+import OPT.OptimizeRegAllocator;
 import Parser.MxLexer;
 import Parser.MxParser;
 import SemanticChecker.SemanticChecker;
@@ -48,7 +49,10 @@ public class Main {
             new ConstantOptimize().visit(irRoot);
             ASMModule asmModule=new ASMModule();
             new InstSelector(asmModule).visit(irRoot);
-            if(online) new RegAllocator().visit(asmModule);
+            if(!online) new PrintStream(new FileOutputStream("testNoRegAllocate.s")).print(asmModule.toString());
+
+            new OptimizeRegAllocator().visit(asmModule);
+            //new RegAllocator().visit(asmModule);
             new InsertSpOffsetInst().visit(asmModule);
             if(online) {
                 System.out.print(asmModule.toString());

@@ -1,8 +1,10 @@
 package ASM;
 
 import ASM.inst.ASMInst;
+import ASM.operand.VirReg;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class ASMBlock {
     public ASMInst head;
@@ -69,4 +71,14 @@ public class ASMBlock {
     public void accept(ASMVisitor visitor){
         visitor.visit(this);
     }
+    //OPT
+    public HashSet<VirReg> use=new HashSet<>();
+    public HashSet<VirReg> def=new HashSet<>();
+    public HashSet<VirReg> in=new HashSet<>();
+    public HashSet<VirReg> out=new HashSet<>();
+    public HashSet<ASMBlock> prev=new HashSet<>();
+    public HashSet<ASMBlock> next=new HashSet<>();
+    public HashSet<String> nextBlockName=new HashSet<>();
+    public boolean allInstVisited=false;//初次访问时遍历所有指令，后续访问只需更新in、out即可，等块抵达不动点再遍历一次内部指令进行内部指令in、out的更新。
+    public int visited_time=0;//用于判断在本轮是否被遍历到
 }

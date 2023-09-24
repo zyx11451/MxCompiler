@@ -4,10 +4,10 @@ import ASM.inst.*;
 import ASM.operand.*;
 
 public class RegAllocator implements ASMVisitor {
-    ASMFunction nowFunc;
-    ASMBlock nowBlock;
-
-    ASMOperand getPhyReg(ASMInst i, ASMOperand tar, PhyReg tmp, boolean isLoad) {
+    public ASMFunction nowFunc;
+    public ASMBlock nowBlock;
+    //为溢出变量重写代码，目前是全部重写状态
+    public ASMOperand getPhyReg(ASMInst i, ASMOperand tar, PhyReg tmp, boolean isLoad) {
         if (tar instanceof VirReg) {
             if (!nowFunc.stackOffset.containsKey(tar)) {
                 nowFunc.allocate((Register) tar);

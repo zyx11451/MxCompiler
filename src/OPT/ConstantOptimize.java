@@ -14,13 +14,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 public class ConstantOptimize implements IRVisitor {
+    //常数优化，单个块内优化，建好控制流图
     boolean nowInstDel = false;
     boolean nowInstReplace = false;
     IRUnconditionalBr rpl = null;
-    IRFunctionDef nowFunc=null;
+    IRFunctionDef nowFunc = null;
+    IRBlock nowBlock = null;
 
     HashMap<IRVariable, IREntity> allocaNearestStore;
-    HashMap<IRVariable,IREntity> nearestLoad;//每个非alloca的变量只能被赋值一次，所以Load的结果可在函数内共享
+    HashMap<IRVariable, IREntity> nearestLoad;//每个非alloca的变量只能被赋值一次，所以Load的结果可在函数内共享
 
     void collectAlloca(IRFunctionDef func) {
         func.functionBody.forEach(i -> {
@@ -49,7 +51,7 @@ public class ConstantOptimize implements IRVisitor {
     }
 
     IREntity tryReplace(IREntity tar) {
-        if (tar instanceof  IRVariable && nearestLoad.containsKey(tar)){
+        if (tar instanceof IRVariable && nearestLoad.containsKey(tar)) {
             return nearestLoad.get(tar);
         }
         if (tar instanceof IRVariable && tar.isConstant()) {
@@ -79,9 +81,9 @@ public class ConstantOptimize implements IRVisitor {
     }
 
     public void visit(IRFunctionDef it) {
-        nowFunc=it;
+        nowFunc = it;
         collectAlloca(nowFunc);
-        nearestLoad=new HashMap<>();
+        nearestLoad = new HashMap<>();
         it.functionBody.forEach(i -> {
             if (i instanceof IRBlock) i.accept(this);
         });
@@ -94,9 +96,9 @@ public class ConstantOptimize implements IRVisitor {
     }
 
     public void visit(IRAlloca it) {
-        if(nowFunc.activeAlloca.get(it.result).size()==1){
+        if (nowFunc.activeAlloca.get(it.result).size() == 1) {
             //只在这个块被使用
-            nowInstDel=true;
+            nowInstDel = true;
         }
     }
 
@@ -141,6 +143,7 @@ public class ConstantOptimize implements IRVisitor {
 
     public void visit(IRBlock it) {
         allocaNearestStore = new HashMap<>();
+        nowBlock = it;
         for (int i = 0; i < it.statements.size(); ) {
             it.statements.get(i).accept(this);
             if (nowInstReplace) it.statements.set(i, rpl);
@@ -149,13 +152,13 @@ public class ConstantOptimize implements IRVisitor {
             nowInstDel = false;
             nowInstReplace = false;
         }
-        HashSet<IREntity> haveStored=new HashSet<>();
-        for(int i=it.statements.size()-1;i>=0;--i){
-            if(it.statements.get(i) instanceof IRStore){
-                if(!((IRStore) it.statements.get(i)).target.isGlobal()){
-                    if(haveStored.contains(((IRStore) it.statements.get(i)).target)){
+        HashSet<IREntity> haveStored = new HashSet<>();
+        for (int i = it.statements.size() - 1; i >= 0; --i) {
+            if (it.statements.get(i) instanceof IRStore) {
+                if (!((IRStore) it.statements.get(i)).target.isGlobal()) {
+                    if (haveStored.contains(((IRStore) it.statements.get(i)).target)) {
                         it.statements.remove(i);
-                    }else{
+                    } else {
                         haveStored.add(((IRStore) it.statements.get(i)).target);
                     }
                 }
@@ -200,21 +203,31 @@ public class ConstantOptimize implements IRVisitor {
                 rpl = new IRUnconditionalBr(it.ifFalse);
             }
         }
+        if (nowBlock.haveTerminal) nowInstDel = true;
+        else {
+            nowBlock.haveTerminal = true;
+            if (nowInstReplace) {
+                nowBlock.nextBlock.add(rpl.dest);
+            } else {
+                nowBlock.nextBlock.add(it.ifTrue);
+                nowBlock.nextBlock.add(it.ifFalse);
+            }
+        }
     }
 
     public void visit(IRGetElementPtr it) {
-        it.ptrVal= (IRVariable) tryReplace(it.ptrVal);
+        it.ptrVal = (IRVariable) tryReplace(it.ptrVal);
         it.idx.replaceAll(this::tryReplace);
     }
 
     public void visit(IRLoad it) {
-        if(allocaNearestStore.containsKey(it.pointer)){
-            if(nearestLoad.containsKey(it.result)){
-                nearestLoad.replace(it.result,allocaNearestStore.get(it.pointer));
-            }else{
-                nearestLoad.put(it.result,allocaNearestStore.get(it.pointer));
+        if (allocaNearestStore.containsKey(it.pointer)) {
+            if (nearestLoad.containsKey(it.result)) {
+                nearestLoad.replace(it.result, allocaNearestStore.get(it.pointer));
+            } else {
+                nearestLoad.put(it.result, allocaNearestStore.get(it.pointer));
             }
-            nowInstDel=true;
+            nowInstDel = true;
         }
     }
 
@@ -226,23 +239,33 @@ public class ConstantOptimize implements IRVisitor {
 
     public void visit(IRRet it) {
         it.returnValue = tryReplace(it.returnValue);
+        if (nowBlock.haveTerminal) nowInstDel = true;
+        else {
+            nowBlock.haveTerminal = true;
+            nowFunc.endBlocks.add(nowBlock);
+        }
     }
 
     public void visit(IRStore it) {
-        it.value=tryReplace(it.value);
-        if(allocaNearestStore.containsKey(it.target)){
-            allocaNearestStore.replace(it.target,it.value);
-        }else{
-            allocaNearestStore.put(it.target,it.value);
+        it.value = tryReplace(it.value);
+        if (allocaNearestStore.containsKey(it.target)) {
+            allocaNearestStore.replace(it.target, it.value);
+        } else {
+            allocaNearestStore.put(it.target, it.value);
         }
-        if(nowFunc.activeAlloca.containsKey(it.target)){
-            if(nowFunc.activeAlloca.get(it.target).size()==1){
+        if (nowFunc.activeAlloca.containsKey(it.target)) {
+            if (nowFunc.activeAlloca.get(it.target).size() == 1) {
                 //只在这个块被使用
-                nowInstDel=true;
+                nowInstDel = true;
             }
         }
     }
 
     public void visit(IRUnconditionalBr it) {
+        if (nowBlock.haveTerminal) nowInstDel = true;
+        else {
+            nowBlock.haveTerminal = true;
+            nowBlock.nextBlock.add(it.dest);
+        }
     }
 }

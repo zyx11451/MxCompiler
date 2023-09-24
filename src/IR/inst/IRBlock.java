@@ -7,6 +7,8 @@ import java.util.ArrayList;
 public class IRBlock extends IRInst {
     public String labelName=null;
     public ArrayList<IRInst> statements;
+    public ArrayList<IRBlock> nextBlock=new ArrayList<>();
+    public boolean haveTerminal=false;
     public IRBlock(String labelName){
         super();
         this.labelName=labelName;
